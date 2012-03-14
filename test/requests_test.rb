@@ -6,6 +6,10 @@ class MockController < ActionController::Base
   def self.after_filter(*args); end 
   
   def headers; response.headers; end
+
+  def params
+    @params ||= {fill_cache: false}
+  end
     
   def request
     @request ||= Class.new do 

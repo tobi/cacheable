@@ -75,6 +75,10 @@ module Cacheable
     end
     false
   end
+
+  def force_refill_cache?
+    !! params[:fill_cache]
+  end
   
   def response_cache(key_data = cache_key_data, namespace_data = cache_namespace_data, options = nil)
     return yield unless cache_configured? && cacheable_request?
@@ -82,11 +86,12 @@ module Cacheable
     
     request.env['cacheable.cache'] = true
     request.env['cacheable.key']   = cache_key_hash = %("#{Digest::MD5.hexdigest(namespaced_key)}")
-    
     Cacheable.log "Raw cacheable.key: #{namespaced_key}, cacheable.key: #{cache_key_hash}, If-None-Match: #{request.env["HTTP_IF_NONE_MATCH"]}"
-        
-    return if try_to_serve_from_client_cache(cache_key_hash)
-    return if try_to_serve_from_server_cache(cache_key_hash)
+
+    unless force_refill_cache?
+      return if try_to_serve_from_client_cache(cache_key_hash)
+      return if try_to_serve_from_server_cache(cache_key_hash)
+    end
 
     request.env['cacheable.miss'] = true
     yield # Yield to the block, this request cannot be handled from cache
