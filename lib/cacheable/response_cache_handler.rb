@@ -110,7 +110,7 @@ module Cacheable
       
         status, content_type, body, timestamp = hit
 
-        if cache_age_tolerance && timestamp < oldest_acceptable_time(cache_age_tolerance)
+        if cache_age_tolerance && page_too_old(timestamp, cache_age_tolerance)
           Cacheable.log "Found an unversioned cache entry, but it was too old (#{timestamp})"
         else
           cache_hit!(message) do
@@ -125,8 +125,8 @@ module Cacheable
       Cacheable.enqueue_cache_rebuild_job(@controller.request.url)
     end
 
-    def oldest_acceptable_time(cache_age_tolerance)
-      Time.now.to_i - cache_age_tolerance
+    def page_too_old(timestamp, cache_age_tolerance)
+      !timestamp || timestamp < (Time.now.to_i - cache_age_tolerance)
     end
 
     def cache_hit!(message, &block)
