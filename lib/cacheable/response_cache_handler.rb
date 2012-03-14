@@ -17,14 +17,14 @@ module Cacheable
 
       Cacheable.log cacheable_info_dump
 
-      # We'll throw cache_hit when we've served the request. 
-      # if cache_hit isn't thrown, we will execute the whole block, 
-      # and get to run_controller_action! on the last line.
+      # :cache_hit is thrown as soon as we've sent data to the client.
       catch :cache_hit do
         try_to_serve_from_cache unless @controller.force_refill_cache?
-        
+
+        # Nothing was thrown; this request cannot be handled from cache.
+        # Yield to the controller and mark for writing into cache.
         @env['cacheable.miss'] = true
-        run_controller_action! # Yield to the block; this request cannot be handled from cache
+        run_controller_action!
       end
     end
 
@@ -90,10 +90,10 @@ module Cacheable
       if @env["HTTP_IF_NONE_MATCH"] == cache_key_hash
         @env['cacheable.miss']  = false
         @env['cacheable.store'] = 'client'
-        head :not_modified
-        
-        Cacheable.log message
-        throw :cache_hit
+
+        cache_hit!(message) do
+          head :not_modified
+        end
       end
     end
 
@@ -107,13 +107,18 @@ module Cacheable
         if cache_age_tolerance && timestamp < (Time.now.to_i - cache_age_tolerance)
           Cacheable.log "Found an unversioned cache entry, but it was too old (#{timestamp})"
         else
-          Cacheable.log message
-          
-          response.headers['Content-Type'] = content_type
-          render text: body, status: status
-          throw :cache_hit
+          cache_hit!(message) do
+            response.headers['Content-Type'] = content_type
+            render text: body, status: status
+          end
         end
       end
+    end
+
+    def cache_hit!(message, &block)
+      Cacheable.log message
+      @controller.instance_eval(&block)
+      throw :cache_hit
     end
 
   end

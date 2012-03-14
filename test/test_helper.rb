@@ -1,5 +1,4 @@
-require 'test/unit'
-require 'rubygems'
+require 'minitest/autorun'
 require 'active_support'
 require 'active_support/cache'
 require 'active_support/cache/memory_store'

@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + "/test_helper"
 
-class CacheableTest < Test::Unit::TestCase
+class CacheableTest < MiniTest::Unit::TestCase
   def setup
     @data = {:foo => 'bar', :bar => [1,['a','b'], 2, {:baz => 'buzz'}], 'qux' => {:red => ['blue', 'green'], :day => true, :night => nil, :updated_at => Time.at(1309362467), :published_on => Time.at(1309320000).to_date}, :format => Mime::Type.lookup('text/html')}
   end

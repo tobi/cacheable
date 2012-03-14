@@ -35,7 +35,7 @@ class MockController < ActionController::Base
   def cacheable?; true; end
 end
 
-class RequestsTest < Test::Unit::TestCase
+class RequestsTest < MiniTest::Unit::TestCase
   
   def setup
     @controller = MockController.new
@@ -50,5 +50,24 @@ class RequestsTest < Test::Unit::TestCase
     assert_equal 'miss', @controller.response.body
   end
 
-  
+  def test_client_cache_hit
+    skip
+  end
+
+  def test_server_cache_hit
+    skip
+  end
+
+  def test_server_recent_cache_hit
+    skip
+  end
+
+  def test_server_recent_cache_acceptable_but_failed
+    skip
+  end
+
+  def test_recent_cache_available_but_not_acceptable
+    skip
+  end
+
 end
