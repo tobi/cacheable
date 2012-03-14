@@ -53,7 +53,7 @@ def client_hit_app(env)
   [ 304, {'Content-Type' => 'text/plain'}, body ]
 end
 
-class RequestsTest < MiniTest::Unit::TestCase
+class MiddlewareTest < MiniTest::Unit::TestCase
   
   def setup
     @cache_store = ActiveSupport::Cache::MemoryStore.new

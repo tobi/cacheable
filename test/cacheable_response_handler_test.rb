@@ -2,7 +2,7 @@ require File.dirname(__FILE__) + "/test_helper"
 
 ActionController::Base.cache_store = :memory_store
 
-class RequestsTest < MiniTest::Unit::TestCase
+class CacheableResponseHandlerTest < MiniTest::Unit::TestCase
 
   def setup
     @cache_store = stub.tap { |s| s.stubs(read: nil)}
@@ -21,6 +21,10 @@ class RequestsTest < MiniTest::Unit::TestCase
       h.block          = proc { response.body = 'some text' }
       h.cache_store    = @cache_store
     end
+  end
+
+  def page
+    [200, "text/html", "<body>hi.</body>", 1331765506]
   end
 
   def assert_env(expected, key)
@@ -42,7 +46,6 @@ class RequestsTest < MiniTest::Unit::TestCase
   end
 
   def test_server_cache_hit
-    page = [200, "text/html", "<body>hi.</body>", 1331765506]
     @cache_store.expects(:read).with(handler.versioned_key_hash).returns(page)
     expect_page_rendered(page)
     handler.run!
@@ -51,8 +54,7 @@ class RequestsTest < MiniTest::Unit::TestCase
   end
 
   def test_server_recent_cache_hit
-    page = [200, "text/html", "<body>hi.</body>", 1331765506]
-    @controller.stubs(:cache_age_tolerance).returns(999999999)
+    @controller.stubs(:cache_age_tolerance).returns(999999999999)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page)
     expect_page_rendered(page)
     Cacheable.expects(:enqueue_cache_rebuild_job).with("http://example.com/")
@@ -62,14 +64,13 @@ class RequestsTest < MiniTest::Unit::TestCase
   end
 
   def test_server_recent_cache_acceptable_but_none_found
-    @controller.stubs(:cache_age_tolerance).returns(999999999)
+    @controller.stubs(:cache_age_tolerance).returns(999999999999)
     handler.run!
     assert_env true, 'cacheable.miss'
     assert_equal 'some text', controller.response.body
   end
 
   def test_recent_cache_available_but_not_acceptable
-    page = [200, "text/html", "<body>hi.</body>", 1331765506]
     @controller.stubs(:cache_age_tolerance).returns(15)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page)
     handler.run!
@@ -78,7 +79,6 @@ class RequestsTest < MiniTest::Unit::TestCase
   end
 
   def test_force_refill_cache
-    page = [200, "text/html", "<body>hi.</body>", 1331765506]
     controller.request.env['HTTP_IF_NONE_MATCH'] = handler.versioned_key_hash
     @cache_store.stubs(:read).with(handler.versioned_key_hash).returns(page)
     @controller.stubs(force_refill_cache?: true)
