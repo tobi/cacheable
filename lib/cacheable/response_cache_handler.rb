@@ -76,9 +76,16 @@ module Cacheable
       try_to_serve_from_server_cache versioned_key_hash
     end
 
+    # TODO: This totally destroys the elegance of the catch/throw mechanism here.
+    # refactor into something better now.
     def try_to_serve_from_recent_cache
       tolerance = @cache_age_tolerance
-      try_to_serve_from_server_cache(unversioned_key_hash, tolerance, "Cache hit: server (recent)")
+      catch :cache_hit do
+        try_to_serve_from_server_cache(unversioned_key_hash, tolerance, "Cache hit: server (recent)")
+        return
+      end
+      enqueue_cache_rebuild_job
+      throw :cache_hit
     end
 
     def serving_from_noncurrent_but_recent_version_acceptable?
@@ -112,6 +119,10 @@ module Cacheable
           end
         end
       end
+    end
+
+    def enqueue_cache_rebuild_job
+      Cacheable.enqueue_cache_rebuild_job(@controller.request.url)
     end
 
     def oldest_acceptable_time(cache_age_tolerance)

@@ -55,10 +55,10 @@ class RequestsTest < MiniTest::Unit::TestCase
     @controller.stubs(:cache_age_tolerance).returns(999999999)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page)
     expect_page_rendered(page)
+    Cacheable.expects(:enqueue_cache_rebuild_job).with("http://example.com/")
     handler.run!
     assert_env false,    'cacheable.miss'
     assert_env 'server', 'cacheable.store'
-    skip "Background job needs to be pushed"
   end
 
   def test_server_recent_cache_acceptable_but_none_found
@@ -82,7 +82,7 @@ class RequestsTest < MiniTest::Unit::TestCase
     controller.request.env['HTTP_IF_NONE_MATCH'] = handler.versioned_key_hash
     @cache_store.stubs(:read).with(handler.versioned_key_hash).returns(page)
     @controller.stubs(force_refill_cache?: true)
-    
+
     handler.run!
     assert_env true, 'cacheable.miss'
     assert_equal 'some text', controller.response.body

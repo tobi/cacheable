@@ -10,6 +10,10 @@ module Cacheable
   def self.log(message)
     Rails.logger.info "[Cacheable] #{message}"
   end
+
+  def self.enqueue_cache_rebuild_job(url)
+    raise NotYetImplemented, "Override Cacheable.enqueue_cache_rebuild_job in an initializer."
+  end
   
   def self.cache_key_for(data)
     case data

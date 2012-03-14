@@ -25,6 +25,7 @@ class MockController < ActionController::Base
     
   def request
     @request ||= Class.new do 
+      def url; "http://example.com/"; end
       def get?; true; end
       def env; @env ||= {'REQUEST_URI' => '/'}; end
       def params; {}; end
