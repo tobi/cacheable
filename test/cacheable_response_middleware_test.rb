@@ -80,7 +80,8 @@ class RequestsTest < Test::Unit::TestCase
   end
   
   def test_cache_miss_and_store
-    @cache_store.expects(:write).with('"abcd"', [200, 'text/plain', 'Hi']).times(1)
+    Cacheable::Middleware.any_instance.stubs(timestamp: 424242)
+    @cache_store.expects(:write).with('"abcd"', [200, 'text/plain', 'Hi', 424242]).times(1)
     
     env = Rack::MockRequest.env_for("http://example.com/index.html")
     

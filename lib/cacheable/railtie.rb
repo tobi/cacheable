@@ -4,7 +4,7 @@ module Cacheable
     initializer "cachable.configure_active_record" do |config|
       config.middleware.use Cacheable::Middleware
 
-      ActionController::Base.send(:include, Cacheable)
+      ActionController::Base.send(:include, Cacheable::Controller)
 
       ActiveRecord::Base.class_eval do  
         def self.cache_store

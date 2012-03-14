@@ -29,8 +29,8 @@ class MockController < ActionController::Base
   def logger
     Class.new { def info(a); end }.new
   end
-                                                                                              
-  include Cacheable
+
+  include Cacheable::Controller
   
   def cacheable?; true; end
 end
@@ -42,9 +42,11 @@ class RequestsTest < Test::Unit::TestCase
   end
   
   def test_cache_miss
-    @controller.response_cache do 
-      @controller.response.body = 'miss'
-    end    
+    @controller.instance_eval do
+      response_cache do 
+        response.body = 'miss'
+      end    
+    end
     assert_equal 'miss', @controller.response.body
   end
 

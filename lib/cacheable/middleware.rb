@@ -24,7 +24,9 @@ module Cacheable
           end
 
           # Store result
-          cache.write(env['cacheable.key'], [status, headers['Content-Type'], body_string])
+          cache_data = [status, headers['Content-Type'], body_string, timestamp]
+          cache.write(env['cacheable.key'], cache_data)
+          cache.write(env['cacheable.unversioned-key'], cache_data) if env['cacheable.unversioned-key']
         end
 
         if status == 200 || status == 304
@@ -39,6 +41,10 @@ module Cacheable
       end
       
       resp    
+    end
+
+    def timestamp
+      Time.now.to_i
     end
     
     def cache
