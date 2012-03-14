@@ -6,25 +6,24 @@ module Cacheable
       @env = controller.request.env
       @cache_store = controller.send :cache_store
       @cache_age_tolerance = controller.cache_age_tolerance
-      
+
       yield self
     end
 
     def run!
+      @env['cacheable.cache']           = true
+      @env['cacheable.key']             = versioned_key_hash
+      @env['cacheable.unversioned-key'] = unversioned_key_hash
+
+      Cacheable.log cacheable_info_dump
+
       # We'll throw cache_hit when we've served the request. 
       # if cache_hit isn't thrown, we will execute the whole block, 
       # and get to run_controller_action! on the last line.
       catch :cache_hit do
-        @env['cacheable.cache']           = true
-        @env['cacheable.key']             = versioned_key_hash
-        @env['cacheable.unversioned-key'] = unversioned_key_hash
-
-        Cacheable.log cacheable_info_dump
-
         try_to_serve_from_cache unless @controller.force_refill_cache?
-
+        
         @env['cacheable.miss'] = true
-
         run_controller_action! # Yield to the block; this request cannot be handled from cache
       end
     end
