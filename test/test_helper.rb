@@ -12,6 +12,8 @@ module Rails
   end
 end
 
+require 'cacheable'
+
 class MockController < ActionController::Base
   def self.after_filter(*args); end 
   

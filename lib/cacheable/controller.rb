@@ -38,6 +38,7 @@ module Cacheable
         h.namespace_data = namespace_data || cache_namespace_data
         h.version_data   = version_data   || cache_version_data
         h.block          = block
+        h.cache_store    = cache_store
       end
 
       handler.run!

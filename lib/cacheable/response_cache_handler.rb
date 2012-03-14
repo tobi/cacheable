@@ -1,13 +1,12 @@
 module Cacheable
   class CacheableResponseHandler
-    attr_accessor :key_data, :namespace_data, :version_data, :block
+    attr_accessor :key_data, :namespace_data, :version_data, :block, :cache_store
     def initialize(controller)
       @controller = controller
       @env = controller.request.env
-      @cache_store = controller.send :cache_store
       @cache_age_tolerance = controller.cache_age_tolerance
 
-      yield self
+      yield self if block_given?
     end
 
     def run!
@@ -28,18 +27,18 @@ module Cacheable
       end
     end
 
-    private
-
-    def run_controller_action!
-      @controller.instance_eval(&@block)
-    end
-
     def versioned_key_hash
       @versioned_key_hash ||= key_hash(versioned_key)
     end
 
     def unversioned_key_hash
       @unversioned_key_hash ||= key_hash(unversioned_key)
+    end
+
+    private
+
+    def run_controller_action!
+      @controller.instance_eval(&@block)
     end
 
     def key_hash(key)
@@ -73,25 +72,25 @@ module Cacheable
     end
 
     def try_to_serve_from_current_cache
-      try_to_serve_from_client_cache versioned_key
-      try_to_serve_from_server_cache versioned_key
+      try_to_serve_from_client_cache versioned_key_hash
+      try_to_serve_from_server_cache versioned_key_hash
     end
 
     def try_to_serve_from_recent_cache
       tolerance = @cache_age_tolerance
-      try_to_serve_from_server_cache(unversioned_key, tolerance, "Cache hit: server (recent)")
+      try_to_serve_from_server_cache(unversioned_key_hash, tolerance, "Cache hit: server (recent)")
     end
 
     def serving_from_noncurrent_but_recent_version_acceptable?
       @controller.cache_age_tolerance > 0
     end
 
-    def try_to_serve_from_client_cache(cache_key_hash, message = "Cache hit: client")
+    def try_to_serve_from_client_cache(cache_key_hash)
       if @env["HTTP_IF_NONE_MATCH"] == cache_key_hash
         @env['cacheable.miss']  = false
         @env['cacheable.store'] = 'client'
 
-        cache_hit!(message) do
+        cache_hit!("Cache hit: client") do
           head :not_modified
         end
       end
