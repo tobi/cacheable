@@ -25,8 +25,10 @@ module Cacheable
 
           # Store result
           cache_data = [status, headers['Content-Type'], body_string, timestamp]
-          cache.write(env['cacheable.key'], cache_data)
-          cache.write(env['cacheable.unversioned-key'], cache_data) if env['cacheable.unversioned-key']
+          Cacheable.write_to_cache(env['cacheable.key']) do
+            cache.write(env['cacheable.key'], cache_data)
+            cache.write(env['cacheable.unversioned-key'], cache_data) if env['cacheable.unversioned-key']
+          end
         end
 
         if status == 200 || status == 304

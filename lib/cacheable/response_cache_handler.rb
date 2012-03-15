@@ -122,7 +122,7 @@ module Cacheable
     end
 
     def enqueue_cache_rebuild_job
-      Cacheable.enqueue_cache_rebuild_job(@controller.request.url)
+      Cacheable.enqueue_cache_rebuild_job(versioned_key_hash, @controller.request.url)
     end
 
     def page_too_old(timestamp, cache_age_tolerance)

@@ -14,6 +14,10 @@ module Cacheable
   def self.enqueue_cache_rebuild_job(url)
     raise NotYetImplemented, "Override Cacheable.enqueue_cache_rebuild_job in an initializer."
   end
+
+  def self.write_to_cache(key)
+    yield
+  end
   
   def self.cache_key_for(data)
     case data

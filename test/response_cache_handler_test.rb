@@ -51,7 +51,7 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
     @controller.stubs(:cache_age_tolerance).returns(999999999999)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page)
     expect_page_rendered(page)
-    Cacheable.expects(:enqueue_cache_rebuild_job).with("http://example.com/")
+    Cacheable.expects(:enqueue_cache_rebuild_job).with(handler.versioned_key_hash, "http://example.com/")
     handler.run!
     assert_env(false, 'server')
   end
