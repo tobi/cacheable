@@ -27,16 +27,6 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
     [200, "text/html", "<body>hi.</body>", 1331765506]
   end
 
-  def assert_env(miss, store)
-    vkh  = handler.versioned_key_hash
-    uvkh = handler.unversioned_key_hash
-    assert_equal true,  controller.request.env['cacheable.cache']
-    assert_equal miss,  controller.request.env['cacheable.miss']
-    assert_equal store, controller.request.env['cacheable.store'] unless store == :anything
-    assert_equal vkh,   controller.request.env['cacheable.key']
-    assert_equal uvkh,  controller.request.env['cacheable.unversioned-key']
-  end
-
   def test_cache_miss
     handler.run!
     assert_equal 'some text', controller.response.body
@@ -96,6 +86,16 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
     handler.run!
     assert_env(true, nil)
     assert_equal 'some text', controller.response.body
+  end
+
+  def assert_env(miss, store)
+    vkh  = handler.versioned_key_hash
+    uvkh = handler.unversioned_key_hash
+    assert_equal true,  controller.request.env['cacheable.cache']
+    assert_equal miss,  controller.request.env['cacheable.miss']
+    assert_equal store, controller.request.env['cacheable.store'] unless store == :anything
+    assert_equal vkh,   controller.request.env['cacheable.key']
+    assert_equal uvkh,  controller.request.env['cacheable.unversioned-key']
   end
 
   def expect_page_rendered(page)
