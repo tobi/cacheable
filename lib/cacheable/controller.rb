@@ -33,7 +33,7 @@ module Cacheable
     def response_cache(key_data=nil, namespace_data=nil, version_data=nil, &block)
       return yield unless cache_configured? && cacheable_request?
       
-      handler = Cacheable::CacheableResponseHandler.new(self) do |h|
+      handler = Cacheable::ResponseCacheHandler.new(self) do |h|
         h.key_data       = key_data       || cache_key_data
         h.namespace_data = namespace_data || cache_namespace_data
         h.version_data   = version_data   || cache_version_data

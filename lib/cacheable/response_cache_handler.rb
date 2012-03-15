@@ -1,5 +1,5 @@
 module Cacheable
-  class CacheableResponseHandler
+  class ResponseCacheHandler
     attr_accessor :key_data, :namespace_data, :version_data, :block, :cache_store
     def initialize(controller)
       @controller = controller
