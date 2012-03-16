@@ -16,8 +16,8 @@ module Cacheable
 
       Cacheable.log cacheable_info_dump
 
-      # :cache_hit is thrown as soon as we've sent data to the client.
-      catch :cache_hit do
+      # :cache_return is thrown as soon as we've sent data to the client.
+      catch :cache_return do
         try_to_serve_from_cache unless @controller.force_refill_cache?
 
         # Nothing was thrown; this request cannot be handled from cache.
@@ -66,6 +66,7 @@ module Cacheable
     def try_to_serve_from_cache
       try_to_serve_from_current_cache
 
+      try_to_refill_cache
       if serving_from_noncurrent_but_recent_version_acceptable?
         try_to_serve_from_recent_cache
       end
@@ -76,16 +77,16 @@ module Cacheable
       try_to_serve_from_server_cache versioned_key_hash
     end
 
-    # TODO: This totally destroys the elegance of the catch/throw mechanism here.
-    # refactor into something better now.
+    def try_to_refill_cache
+      if Cacheable.acquire_lock(cache_key)
+        @env['cacheable.miss']  = true
+        cache_return!("Refilling cache", &@block)
+      end
+    end
+
     def try_to_serve_from_recent_cache
       tolerance = @cache_age_tolerance
-      catch :cache_hit do
-        try_to_serve_from_server_cache(unversioned_key_hash, tolerance, "Cache hit: server (recent)")
-        return
-      end
-      enqueue_cache_rebuild_job
-      throw :cache_hit
+      try_to_serve_from_server_cache(unversioned_key_hash, tolerance, "Cache hit: server (recent)")
     end
 
     def serving_from_noncurrent_but_recent_version_acceptable?
@@ -97,7 +98,7 @@ module Cacheable
         @env['cacheable.miss']  = false
         @env['cacheable.store'] = 'client'
 
-        cache_hit!("Cache hit: client") do
+        cache_return!("Cache hit: client") do
           head :not_modified
         end
       end
@@ -113,7 +114,7 @@ module Cacheable
         if cache_age_tolerance && page_too_old(timestamp, cache_age_tolerance)
           Cacheable.log "Found an unversioned cache entry, but it was too old (#{timestamp})"
         else
-          cache_hit!(message) do
+          cache_return!(message) do
             response.headers['Content-Type'] = content_type
             render text: body, status: status
           end
@@ -121,18 +122,14 @@ module Cacheable
       end
     end
 
-    def enqueue_cache_rebuild_job
-      Cacheable.enqueue_cache_rebuild_job(versioned_key_hash, @controller.request.url)
-    end
-
     def page_too_old(timestamp, cache_age_tolerance)
       !timestamp || timestamp < (Time.now.to_i - cache_age_tolerance)
     end
 
-    def cache_hit!(message, &block)
+    def cache_return!(message, &block)
       Cacheable.log message
       @controller.instance_eval(&block)
-      throw :cache_hit
+      throw :cache_return
     end
 
   end

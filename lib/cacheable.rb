@@ -11,8 +11,8 @@ module Cacheable
     Rails.logger.info "[Cacheable] #{message}"
   end
 
-  def self.enqueue_cache_rebuild_job(url)
-    raise NotYetImplemented, "Override Cacheable.enqueue_cache_rebuild_job in an initializer."
+  def self.acquire_lock(cache_key)
+    raise NotYetImplemented, "Override Cacheable.acquire_lock in an initializer."
   end
 
   def self.write_to_cache(key)
