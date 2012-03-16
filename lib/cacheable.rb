@@ -12,7 +12,7 @@ module Cacheable
   end
 
   def self.acquire_lock(cache_key)
-    raise NotYetImplemented, "Override Cacheable.acquire_lock in an initializer."
+    raise NotImplementedError, "Override Cacheable.acquire_lock in an initializer."
   end
 
   def self.write_to_cache(key)

@@ -7,6 +7,7 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
   def setup
     @cache_store = stub.tap { |s| s.stubs(read: nil)}
     controller.request.env['HTTP_IF_NONE_MATCH'] = 'deadbeefdeadbeef'
+    Cacheable.stubs(:acquire_lock).returns(true)
   end
 
   def controller
@@ -51,7 +52,7 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
     @controller.stubs(:cache_age_tolerance).returns(999999999999)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page)
     expect_page_rendered(page)
-    Cacheable.expects(:enqueue_cache_rebuild_job).with(handler.versioned_key_hash, "http://example.com/")
+    Cacheable.expects(:acquire_lock).with(handler.versioned_key_hash)
     handler.run!
     assert_env(false, 'server')
   end
@@ -64,6 +65,7 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
   end
 
   def test_nil_timestamp_in_second_lookup_causes_a_cache_miss
+    Cacheable.stubs(:acquire_lock).returns(false)
     @controller.stubs(:cache_age_tolerance).returns(999999999999)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page[0..2])
     handler.run!
@@ -71,6 +73,7 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
   end
 
   def test_recent_cache_available_but_not_acceptable
+    Cacheable.stubs(:acquire_lock).returns(false)
     @controller.stubs(:cache_age_tolerance).returns(15)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page)
     handler.run!
