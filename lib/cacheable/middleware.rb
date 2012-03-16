@@ -33,6 +33,7 @@ module Cacheable
 
         if status == 200 || status == 304
           headers['ETag'] = env['cacheable.key'] 
+          headers['X-Alternate-Cache-Key'] = env['cacheable.unversioned-key'] 
         end
         
         # Add X-Cache header 
