@@ -78,7 +78,7 @@ module Cacheable
     end
 
     def try_to_refill_cache
-      if Cacheable.acquire_lock(cache_key)
+      if Cacheable.acquire_lock(versioned_key_hash)
         @env['cacheable.miss']  = true
         cache_return!("Refilling cache", &@block)
       end
