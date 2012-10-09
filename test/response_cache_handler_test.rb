@@ -49,7 +49,7 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
   end
 
   def test_server_recent_cache_hit
-    @controller.stubs(:cache_age_tolerance).returns(999999999999)
+    @controller.stubs(:cache_age_tolerance_in_seconds).returns(999999999999)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page)
     expect_page_rendered(page)
     Cacheable.expects(:acquire_lock).with(handler.versioned_key_hash)
@@ -58,7 +58,7 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
   end
 
   def test_server_recent_cache_acceptable_but_none_found
-    @controller.stubs(:cache_age_tolerance).returns(999999999999)
+    @controller.stubs(:cache_age_tolerance_in_seconds).returns(999999999999)
     handler.run!
     assert_equal 'some text', controller.response.body
     assert_env(true, :anything)
@@ -66,7 +66,7 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
 
   def test_nil_timestamp_in_second_lookup_causes_a_cache_miss
     Cacheable.stubs(:acquire_lock).returns(false)
-    @controller.stubs(:cache_age_tolerance).returns(999999999999)
+    @controller.stubs(:cache_age_tolerance_in_seconds).returns(999999999999)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page[0..2])
     handler.run!
     assert_env(true, :anything)
@@ -74,7 +74,7 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
 
   def test_recent_cache_available_but_not_acceptable
     Cacheable.stubs(:acquire_lock).returns(false)
-    @controller.stubs(:cache_age_tolerance).returns(15)
+    @controller.stubs(:cache_age_tolerance_in_seconds).returns(15)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page)
     handler.run!
     assert_equal 'some text', controller.response.body

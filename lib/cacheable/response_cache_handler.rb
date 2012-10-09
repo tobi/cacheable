@@ -4,7 +4,7 @@ module Cacheable
     def initialize(controller)
       @controller = controller
       @env = controller.request.env
-      @cache_age_tolerance = controller.cache_age_tolerance
+      @cache_age_tolerance = controller.cache_age_tolerance_in_seconds
 
       yield self if block_given?
     end
@@ -90,7 +90,7 @@ module Cacheable
     end
 
     def serving_from_noncurrent_but_recent_version_acceptable?
-      @controller.cache_age_tolerance > 0
+      @cache_age_tolerance > 0
     end
 
     def try_to_serve_from_client_cache(cache_key_hash)

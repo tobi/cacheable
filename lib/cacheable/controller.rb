@@ -26,7 +26,7 @@ module Cacheable
 
     # If you're okay with serving pages that are not at the newest version, bump this up
     # to whatever number of seconds you're comfortable with.
-    def cache_age_tolerance
+    def cache_age_tolerance_in_seconds
       0
     end
 
