@@ -6,7 +6,7 @@ class CacheableTest < MiniTest::Unit::TestCase
   end
   
   def test_cache_key_for_handles_nested_everything_and_removes_hash_keys_with_nil_values
-    expected = %|{"qux"=>{:day=>true,:published_on=>1309237200,:red=>["blue","green"],:updated_at=>1309362467},:bar=>[1,["a","b"],2,{:baz=>"buzz"}],:foo=>"bar",:format=>"text/html"}|
+    expected = %|{"qux"=>{:day=>true,:published_on=>1309320000,:red=>["blue","green"],:updated_at=>1309362467},:bar=>[1,["a","b"],2,{:baz=>"buzz"}],:foo=>"bar",:format=>"text/html"}|
     assert_equal expected, Cacheable.cache_key_for(@data)
   end
 end
