@@ -21,14 +21,8 @@ module Cacheable
   
   def self.cache_key_for(data)
     case data
-    when Hash
-      components = data.inject([]) do |ary, pair|
-        ary << "#{cache_key_for(pair.first)}=>#{cache_key_for(pair.last)}" unless pair.last.nil?
-        ary
-      end
-      "{"+ components.sort.join(',') +"}"
-    when Array
-      "["+ data.map {|el| cache_key_for(el)}.join(',') +"]"
+    when Hash, Array
+      data.inspect
     when Time, DateTime
       data.to_i
     when Date
