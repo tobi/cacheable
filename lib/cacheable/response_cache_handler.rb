@@ -1,6 +1,6 @@
 module Cacheable
   class ResponseCacheHandler
-    attr_accessor :key_data, :namespace_data, :version_data, :block, :cache_store
+    attr_accessor :key_data, :version_data, :block, :cache_store
     def initialize(controller)
       @controller = controller
       @env = controller.request.env
@@ -46,11 +46,11 @@ module Cacheable
     end
 
     def versioned_key
-      @versioned_key ||= Cacheable.cache_key_for(namespace: namespace_data, key: key_data, version: version_data)
+      @versioned_key ||= Cacheable.cache_key_for(key: key_data, version: version_data)
     end
 
     def unversioned_key
-      @unversioned_key ||= Cacheable.cache_key_for(namespace: namespace_data, key: key_data)
+      @unversioned_key ||= Cacheable.cache_key_for(key: key_data)
     end
 
     def cacheable_info_dump

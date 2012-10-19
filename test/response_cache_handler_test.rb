@@ -17,7 +17,6 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
   def handler
     @handler ||= Cacheable::ResponseCacheHandler.new(controller) do |h|
       h.key_data       = controller.cache_key_data
-      h.namespace_data = controller.cache_namespace_data
       h.version_data   = controller.cache_version_data
       h.block          = proc { response.body = 'some text' }
       h.cache_store    = @cache_store
