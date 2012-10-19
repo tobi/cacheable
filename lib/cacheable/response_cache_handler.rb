@@ -1,3 +1,5 @@
+require 'cityhash'
+
 module Cacheable
   class ResponseCacheHandler
     attr_accessor :key_data, :version_data, :block, :cache_store
@@ -42,7 +44,7 @@ module Cacheable
     end
 
     def key_hash(key)
-      %("#{Digest::MD5.hexdigest(key)}") 
+      "Cachable:#{CityHash.hash128(key)}"
     end
 
     def versioned_key
@@ -108,7 +110,7 @@ module Cacheable
       if hit = @cache_store.read(cache_key_hash)
         @env['cacheable.miss']  = false
         @env['cacheable.store'] = 'server'
-      
+
         status, content_type, body, timestamp = hit
 
         if cache_age_tolerance && page_too_old(timestamp, cache_age_tolerance)
