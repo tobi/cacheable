@@ -66,36 +66,36 @@ module Cacheable
     end
 
     def try_to_serve_from_cache
-      try_to_serve_from_current_cache
+      # Etag
+      serve_from_browser_cache(versioned_key_hash)
 
-      try_to_refill_cache
+      # Memcached 
+      serve_from_cache(versioned_key_hash)
+
+      # execute if we can get the lock
+      execute
+
+      # serve a stale version 
       if serving_from_noncurrent_but_recent_version_acceptable?
-        try_to_serve_from_recent_cache
+
+        serve_from_cache(unversioned_key_hash, @cache_age_tolerance, "Cache hit: server (recent)")
+
       end
     end
 
-    def try_to_serve_from_current_cache
-      try_to_serve_from_client_cache versioned_key_hash
-      try_to_serve_from_server_cache versioned_key_hash
-    end
-
-    def try_to_refill_cache
+    def execute
       if Cacheable.acquire_lock(versioned_key_hash)
         @env['cacheable.miss']  = true
         cache_return!("Refilling cache", &@block)
       end
     end
 
-    def try_to_serve_from_recent_cache
-      tolerance = @cache_age_tolerance
-      try_to_serve_from_server_cache(unversioned_key_hash, tolerance, "Cache hit: server (recent)")
-    end
 
     def serving_from_noncurrent_but_recent_version_acceptable?
       @cache_age_tolerance > 0
     end
 
-    def try_to_serve_from_client_cache(cache_key_hash)
+    def serve_from_browser_cache(cache_key_hash)
       if @env["HTTP_IF_NONE_MATCH"] == cache_key_hash
         @env['cacheable.miss']  = false
         @env['cacheable.store'] = 'client'
@@ -106,7 +106,7 @@ module Cacheable
       end
     end
 
-    def try_to_serve_from_server_cache(cache_key_hash, cache_age_tolerance=nil, message = "Cache hit: server")
+    def serve_from_cache(cache_key_hash, cache_age_tolerance=nil, message = "Cache hit: server")
       if hit = @cache_store.read(cache_key_hash)
         @env['cacheable.miss']  = false
         @env['cacheable.store'] = 'server'
