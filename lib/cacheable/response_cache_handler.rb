@@ -44,7 +44,7 @@ module Cacheable
     end
 
     def key_hash(key)
-      "Cachable:#{CityHash.hash128(key)}"
+      "cachable:#{CityHash.hash128(key)}"
     end
 
     def versioned_key
@@ -57,10 +57,9 @@ module Cacheable
 
     def cacheable_info_dump
       [
+        "Browser gzip: #{@env['gzip']}",
         "Raw cacheable.key: #{versioned_key}",
         "cacheable.key: #{versioned_key_hash}",
-        "Raw cacheable.unversioned-key: #{unversioned_key}",
-        "cacheable.unversioned-key: #{unversioned_key_hash}",
         "If-None-Match: #{@env['HTTP_IF_NONE_MATCH']}"
       ].join(", ")
     end
