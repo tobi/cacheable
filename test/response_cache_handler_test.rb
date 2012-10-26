@@ -24,6 +24,10 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
   end
 
   def page
+    [200, "text/html", Cacheable.compress("<body>hi.</body>"), 1331765506]
+  end
+
+  def page_uncompressed
     [200, "text/html", "<body>hi.</body>", 1331765506]
   end
 
@@ -41,8 +45,17 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
   end
 
   def test_server_cache_hit
+    controller.request.env['gzip'] = false
     @cache_store.expects(:read).with(handler.versioned_key_hash).returns(page)
-    expect_page_rendered(page)
+    expect_page_rendered(page_uncompressed)
+    handler.run!
+    assert_env(false, 'server')
+  end
+
+  def test_server_cache_hit_support_gzip
+    controller.request.env['gzip'] = true
+    @cache_store.expects(:read).with(handler.versioned_key_hash).returns(page)
+    expect_compressed_page_rendered(page)
     handler.run!
     assert_env(false, 'server')
   end
@@ -50,7 +63,7 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
   def test_server_recent_cache_hit
     @controller.stubs(:cache_age_tolerance_in_seconds).returns(999999999999)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page)
-    expect_page_rendered(page)
+    expect_page_rendered(page_uncompressed)
     Cacheable.expects(:acquire_lock).with(handler.versioned_key_hash)
     handler.run!
     assert_env(false, 'server')
@@ -102,8 +115,18 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
 
   def expect_page_rendered(page)
     status, content_type, body, timestamp = page
+    Cacheable.expects(:decompress).returns(body).once
+
     @controller.expects(:render).with(text: body, status: status)
     @controller.response.headers.expects(:[]=).with('Content-Type', content_type)
+  end
+
+  def expect_compressed_page_rendered(page)
+    status, content_type, body, timestamp = page
+    Cacheable.expects(:decompress).never
+    @controller.expects(:render).with(text: body, status: status)
+    @controller.response.headers.expects(:[]=).with('Content-Type', content_type)
+    @controller.response.headers.expects(:[]=).with('Content-Encoding', "gzip")
   end
 
 end

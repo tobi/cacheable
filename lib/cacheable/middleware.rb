@@ -6,16 +6,21 @@ module Cacheable
       @cache_store = cache_store
     end
 
-    CACHEABLE_STATUSES = [200, 404]
 
     def call(env)
       env['cacheable.cache'] = false
+      gzip = env['gzip'] = env['HTTP_ACCEPT_ENCODING'].to_s.include?("gzip")
 
-      status, headers, body = resp = @app.call(env)
+      status, headers, body = @app.call(env)
 
       if env['cacheable.cache']
 
-        if CACHEABLE_STATUSES.include?(status) && env['cacheable.miss']
+        if [200, 404, 304].include?(status)
+          headers['ETag'] = env['cacheable.key']
+          headers['X-Alternate-Cache-Key'] = env['cacheable.unversioned-key']
+        end
+
+        if [200, 404].include?(status) && env['cacheable.miss']
 
           # Flatten down the result so that it can be stored to memcached.
           if body.is_a?(String)
@@ -25,17 +30,21 @@ module Cacheable
             body.each { |part| body_string << part }
           end
 
+          body_gz = Cacheable.compress(body_string)
+
           # Store result
-          cache_data = [status, headers['Content-Type'], body_string, timestamp]
+          cache_data = [status, headers['Content-Type'], body_gz, timestamp]
           Cacheable.write_to_cache(env['cacheable.key']) do
             cache.write(env['cacheable.key'], cache_data)
             cache.write(env['cacheable.unversioned-key'], cache_data) if env['cacheable.unversioned-key']
           end
-        end
 
-        if CACHEABLE_STATUSES.include?(status) || status == 304
-          headers['ETag'] = env['cacheable.key']
-          headers['X-Alternate-Cache-Key'] = env['cacheable.unversioned-key']
+          # since we had to generate the gz version above already we may
+          # as well serve it if the client wants it
+          if gzip
+            headers['Content-Encoding'] = "gzip"
+            body = [body_gz]
+          end
         end
 
         # Add X-Cache header
@@ -45,7 +54,7 @@ module Cacheable
         headers['X-Cache'] = x_cache
       end
 
-      resp
+      [status, headers, body]
     end
 
     def timestamp

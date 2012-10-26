@@ -81,7 +81,7 @@ class MiddlewareTest < MiniTest::Unit::TestCase
   
   def test_cache_miss_and_store
     Cacheable::Middleware.any_instance.stubs(timestamp: 424242)
-    @cache_store.expects(:write).with('"abcd"', [200, 'text/plain', 'Hi', 424242]).once()
+    @cache_store.expects(:write).with('"abcd"', [200, 'text/plain', Cacheable.compress('Hi'), 424242]).once()
     
     env = Rack::MockRequest.env_for("http://example.com/index.html")
     
@@ -90,10 +90,35 @@ class MiddlewareTest < MiniTest::Unit::TestCase
 
     assert env['cacheable.cache']
     assert env['cacheable.miss']
-        
+
     assert_equal '"abcd"', result[1]['ETag']
     assert_equal 'miss', result[1]['X-Cache']
     assert_nil env['cacheable.store']
+
+    # no gzip support here
+    assert !result[1]['Content-Encoding']    
+  end
+
+  def test_cache_miss_and_store_with_gzip_support
+    Cacheable::Middleware.any_instance.stubs(timestamp: 424242)
+    @cache_store.expects(:write).with('"abcd"', [200, 'text/plain', Cacheable.compress('Hi'), 424242]).once()
+    
+    env = Rack::MockRequest.env_for("http://example.com/index.html")
+    env['HTTP_ACCEPT_ENCODING'] = 'deflate, gzip'
+    
+    ware = Cacheable::Middleware.new(method(:cacheable_app), @cache_store)
+    result = ware.call(env)
+
+    assert env['cacheable.cache']
+    assert env['cacheable.miss']
+
+    assert_equal '"abcd"', result[1]['ETag']
+    assert_equal 'miss', result[1]['X-Cache']
+    assert_nil env['cacheable.store']
+
+    # gzip support!
+    assert_equal 'gzip', result[1]['Content-Encoding']
+    assert_equal [Cacheable.compress("Hi")], result[2]
   end
   
   def test_cache_hit_server

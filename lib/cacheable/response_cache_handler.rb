@@ -118,6 +118,15 @@ module Cacheable
         else
           cache_return!(message) do
             response.headers['Content-Type'] = content_type
+
+            if request.env["gzip"]
+              response.headers['Content-Encoding'] = "gzip"
+            else
+              # we have to uncompress because the client doesn't support gzip
+              Cacheable.log "uncompressing for client without gzip"
+              body = Cacheable.decompress(body)
+            end
+
             render text: body, status: status
           end
         end
