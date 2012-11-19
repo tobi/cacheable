@@ -74,7 +74,7 @@ class MiddlewareTest < MiniTest::Unit::TestCase
     ware = Cacheable::Middleware.new(method(:app), @cache_store)
     result = ware.call(env)
 
-    assert_nil result[1]['Etag']
+    assert_nil result[1]['ETag']
   end
       
   def test_cache_miss_and_not_found
@@ -85,7 +85,7 @@ class MiddlewareTest < MiniTest::Unit::TestCase
     ware = Cacheable::Middleware.new(method(:not_found), @cache_store)
     result = ware.call(env)
 
-    assert_nil result[1]['Etag']
+    assert_equal '"abcd"', result[1]['ETag']
   end
 
   def test_cache_miss_and_found
