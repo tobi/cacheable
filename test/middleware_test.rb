@@ -24,6 +24,15 @@ def not_found(env)
   [ 404, {'Content-Type' => 'text/plain'}, body ]
 end
 
+def found(env)
+  env['cacheable.cache'] = true
+  env['cacheable.miss']  = true
+  env['cacheable.key']   = '"abcd"'
+  
+  body = block_given? ? [yield] : ['Hi']
+  [ 302, {'Location' => 'http://shopify.com'}, []]
+end
+
 def cacheable_app(env)  
   env['cacheable.cache'] = true
   env['cacheable.miss']  = true
@@ -78,7 +87,18 @@ class MiddlewareTest < MiniTest::Unit::TestCase
 
     assert_nil result[1]['Etag']
   end
-  
+
+  def test_cache_miss_and_found
+    @cache_store.expects(:write).once()
+
+    env = Rack::MockRequest.env_for("http://example.com/index.html")
+
+    ware = Cacheable::Middleware.new(method(:found), @cache_store)
+    result = ware.call(env)
+
+    assert_nil result[1]['Etag']
+  end
+
   def test_cache_miss_and_store
     Cacheable::Middleware.any_instance.stubs(timestamp: 424242)
     @cache_store.expects(:write).with('"abcd"', [200, 'text/plain', Cacheable.compress('Hi'), 424242]).once()
