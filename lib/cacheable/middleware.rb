@@ -14,12 +14,12 @@ module Cacheable
 
       if env['cacheable.cache']
 
-        if [200, 404, 302, 304].include?(status)
+        if [200, 404, 301, 304].include?(status)
           headers['ETag'] = env['cacheable.key']
           headers['X-Alternate-Cache-Key'] = env['cacheable.unversioned-key']
         end
 
-        if [200, 404, 302].include?(status) && env['cacheable.miss']
+        if [200, 404, 301].include?(status) && env['cacheable.miss']
 
           # Flatten down the result so that it can be stored to memcached.
           if body.is_a?(String)

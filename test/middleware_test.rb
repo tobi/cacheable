@@ -24,13 +24,13 @@ def not_found(env)
   [ 404, {'Content-Type' => 'text/plain'}, body ]
 end
 
-def found(env)
+def moved(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = true
   env['cacheable.key']   = '"abcd"'
-  
+
   body = block_given? ? [yield] : ['Hi']
-  [ 302, {'Location' => 'http://shopify.com'}, []]
+  [ 301, {'Location' => 'http://shopify.com'}, []]
 end
 
 def cacheable_app(env)  
@@ -88,12 +88,12 @@ class MiddlewareTest < MiniTest::Unit::TestCase
     assert_equal '"abcd"', result[1]['ETag']
   end
 
-  def test_cache_miss_and_found
+  def test_cache_miss_and_moved
     @cache_store.expects(:write).once()
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
 
-    ware = Cacheable::Middleware.new(method(:found), @cache_store)
+    ware = Cacheable::Middleware.new(method(:moved), @cache_store)
     result = ware.call(env)
 
     assert_equal '"abcd"', result[1]['ETag']
