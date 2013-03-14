@@ -249,7 +249,7 @@ class MiddlewareTest < MiniTest::Unit::TestCase
     assert env['cacheable.cache']
     assert !env['cacheable.miss']
     assert_equal 'server', env['cacheable.store']
-    assert_equal nil, result[1]['ETag']
+    assert_equal '"abcd"', result[1]['ETag']
     assert_equal "-1", result[1]['Expires']
   end
 

@@ -17,10 +17,9 @@ module Cacheable
       if env['cacheable.cache']
 
         if [200, 404, 301, 304].include?(status)
-          unless ie_ajax_request?(env)
-            headers['ETag'] = env['cacheable.key']
-            headers['X-Alternate-Cache-Key'] = env['cacheable.unversioned-key']
-          else
+          headers['ETag'] = env['cacheable.key']
+          headers['X-Alternate-Cache-Key'] = env['cacheable.unversioned-key']
+          if ie_ajax_request?(env)
             headers["Expires"] = "-1"
           end
         end
