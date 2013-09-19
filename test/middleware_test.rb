@@ -124,7 +124,7 @@ class MiddlewareTest < MiniTest::Unit::TestCase
 
   def test_cache_miss_and_store
     Cacheable::Middleware.any_instance.stubs(timestamp: 424242)
-    @cache_store.expects(:write).with('"abcd"', [200, 'text/plain', Cacheable.compress('Hi'), 424242]).once()
+    @cache_store.expects(:write).with('"abcd"', MessagePack.dump([200, 'text/plain', Cacheable.compress('Hi'), 424242]), raw: true).once()
     
     env = Rack::MockRequest.env_for("http://example.com/index.html")
     
@@ -144,7 +144,7 @@ class MiddlewareTest < MiniTest::Unit::TestCase
 
   def test_cache_miss_and_store_on_moved
     Cacheable::Middleware.any_instance.stubs(timestamp: 424242)
-    @cache_store.expects(:write).with('"abcd"', [301, 'text/plain', Cacheable.compress(''), 424242, 'http://shopify.com']).once()
+    @cache_store.expects(:write).with('"abcd"', MessagePack.dump([301, 'text/plain', Cacheable.compress(''), 424242, 'http://shopify.com']), raw:true).once()
     
     env = Rack::MockRequest.env_for("http://example.com/index.html")
     
@@ -164,7 +164,7 @@ class MiddlewareTest < MiniTest::Unit::TestCase
 
   def test_cache_miss_and_store_with_gzip_support
     Cacheable::Middleware.any_instance.stubs(timestamp: 424242)
-    @cache_store.expects(:write).with('"abcd"', [200, 'text/plain', Cacheable.compress('Hi'), 424242]).once()
+    @cache_store.expects(:write).with('"abcd"', MessagePack.dump([200, 'text/plain', Cacheable.compress('Hi'), 424242]), raw: true).once()
     
     env = Rack::MockRequest.env_for("http://example.com/index.html")
     env['HTTP_ACCEPT_ENCODING'] = 'deflate, gzip'

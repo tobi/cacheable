@@ -108,7 +108,9 @@ module Cacheable
     end
 
     def serve_from_cache(cache_key_hash, cache_age_tolerance=nil, message = "Cache hit: server")
-      if hit = @cache_store.read(cache_key_hash)
+      if raw = @cache_store.read(cache_key_hash)
+        hit = MessagePack.load(raw)
+
         @env['cacheable.miss']  = false
         @env['cacheable.store'] = 'server'
 

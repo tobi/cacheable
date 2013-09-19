@@ -1,9 +1,8 @@
-require 'digest/md5'
-
 require 'cacheable/middleware'
 require 'cacheable/railtie'
 require 'cacheable/response_cache_handler'
 require 'cacheable/controller'
+require 'msgpack'
 
 module Cacheable
   def self.log(message)

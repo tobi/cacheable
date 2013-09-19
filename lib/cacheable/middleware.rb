@@ -41,8 +41,9 @@ module Cacheable
           cache_data << headers['Location'] if status == 301
 
           Cacheable.write_to_cache(env['cacheable.key']) do
-            cache.write(env['cacheable.key'], cache_data)
-            cache.write(env['cacheable.unversioned-key'], cache_data) if env['cacheable.unversioned-key']
+            payload = MessagePack.dump(cache_data)
+            cache.write(env['cacheable.key'], payload, raw: true)
+            cache.write(env['cacheable.unversioned-key'], payload, raw: true) if env['cacheable.unversioned-key']
           end
 
           # since we had to generate the gz version above already we may
