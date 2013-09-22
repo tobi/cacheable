@@ -1,4 +1,4 @@
-require 'cityhash'
+require 'digest/md5'
 
 module Cacheable
   class ResponseCacheHandler
@@ -44,7 +44,7 @@ module Cacheable
     end
 
     def key_hash(key)
-      "cachable:#{CityHash.hash128(key)}"
+      "cacheable:#{Digest::MD5.hexdigest(key)}"
     end
 
     def versioned_key
@@ -58,6 +58,8 @@ module Cacheable
     def cacheable_info_dump
       [
         "Browser gzip: #{@env['gzip']}",
+        # This should come from nginx
+        "Suggested key: #{@env['HTTP_X_CACHEABLE_KEY']} (#{@env['HTTP_X_CACHEABLE_SIGNATURE']})",
         "Raw cacheable.key: #{versioned_key}",
         "cacheable.key: #{versioned_key_hash}",
         "If-None-Match: #{@env['HTTP_IF_NONE_MATCH']}"

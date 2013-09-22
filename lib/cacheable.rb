@@ -32,7 +32,11 @@ module Cacheable
 
   def self.cache_key_for(data)
     case data
-    when Hash, Array
+    when Hash
+      return data.inspect unless data.key?(:key)
+      return "#{data[:key].values.join(",")}" unless data.key?(:version)
+      "#{data[:key].values.join(",")}:#{data[:version].values.join(",")}"
+    when Array
       data.inspect
     when Time, DateTime
       data.to_i

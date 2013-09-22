@@ -26,16 +26,16 @@ Gem::Specification.new do |s|
       s.add_development_dependency(%q<rake>, [">= 0"])
       s.add_runtime_dependency(%q<activesupport>, [">= 0"])
       s.add_runtime_dependency(%q<actionpack>, [">= 0"])
-      s.add_runtime_dependency(%q<cityhash>, ["= 0.6.0"])
       s.add_runtime_dependency(%q<useragent>, [">= 0"])
+      s.add_runtime_dependency(%q<msgpack>, [">= 0"])
     else
       s.add_dependency(%q<minitest>, [">= 0"])
       s.add_dependency(%q<mocha>, [">= 0"])
       s.add_dependency(%q<rake>, [">= 0"])
       s.add_dependency(%q<activesupport>, [">= 0"])
       s.add_dependency(%q<actionpack>, [">= 0"])
-      s.add_dependency(%q<cityhash>, ["= 0.6.0"])
       s.add_dependency(%q<useragent>, [">= 0"])
+      s.add_dependency(%q<msgpack>, [">= 0"])
     end
   else
     s.add_dependency(%q<minitest>, [">= 0"])
@@ -43,8 +43,7 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<rake>, [">= 0"])
     s.add_dependency(%q<activesupport>, [">= 0"])
     s.add_dependency(%q<actionpack>, [">= 0"])
-    s.add_dependency(%q<cityhash>, ["== 0.6.0"])
     s.add_dependency(%q<useragent>, [">= 0"])
-  end
     s.add_dependency(%q<msgpack>, [">= 0"])
+  end
 end

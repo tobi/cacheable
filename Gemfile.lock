@@ -4,7 +4,6 @@ PATH
     cacheable (0.0.1)
       actionpack
       activesupport
-      cityhash (= 0.6.0)
       msgpack
       useragent
 
@@ -28,7 +27,6 @@ GEM
       i18n (~> 0.6, >= 0.6.4)
       multi_json (~> 1.0)
     builder (3.0.4)
-    cityhash (0.6.0)
     erubis (2.7.0)
     hike (1.2.3)
     i18n (0.6.5)
