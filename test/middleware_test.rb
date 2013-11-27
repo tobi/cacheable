@@ -1,14 +1,17 @@
 require File.dirname(__FILE__) + "/test_helper"
 
-ActionController::Base.cache_store = :memory_store
-
 module Rails
   def self.cache
+    @cache ||= Object.new
   end
+
   def self.logger
     @logger ||= Logger.new(nil)
   end
 end
+
+ActionController::Base.cache_store = :memory_store
+
 
 def app(env)
   body = block_given? ? [yield] : ['Hi']
@@ -76,6 +79,21 @@ class MiddlewareTest < MiniTest::Unit::TestCase
   
   def setup
     @cache_store = ActiveSupport::Cache::MemoryStore.new
+  end
+
+  def test_will_use_the_default_cache_store
+    store = Object.new
+    Cacheable::Middleware.default_cache_store = store
+    midleware = Cacheable::Middleware.new(Proc.new{})
+
+    assert_equal store, midleware.cache
+  ensure
+    Cacheable::Middleware.default_cache_store = nil
+  end
+
+  def test_will_fallback_to_using_rails_cache
+    midleware = Cacheable::Middleware.new(Proc.new{})
+    assert_equal Rails.cache, midleware.cache
   end
     
   def test_cache_miss_and_ignore

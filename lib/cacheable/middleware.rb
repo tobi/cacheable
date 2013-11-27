@@ -3,6 +3,10 @@ require 'useragent'
 module Cacheable
   class Middleware
 
+    class << self
+      attr_accessor :default_cache_store
+    end
+
     def initialize(app, cache_store = nil)
       @app = app
       @cache_store = cache_store
@@ -68,7 +72,7 @@ module Cacheable
     end
 
     def cache
-      @cache_store ||= Rails.cache
+      @cache_store ||= self.class.default_cache_store || Rails.cache
     end
 
     def ie_ajax_request?(env)
