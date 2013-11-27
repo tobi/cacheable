@@ -72,7 +72,7 @@ module Cacheable
     end
 
     def cache
-      @cache_store ||= self.class.default_cache_store || Rails.cache
+      @cache_store ||= ActiveSupport::Cache.lookup_store(*self.class.default_cache_store || Rails.cache)
     end
 
     def ie_ajax_request?(env)

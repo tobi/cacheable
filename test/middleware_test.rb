@@ -81,19 +81,29 @@ class MiddlewareTest < MiniTest::Unit::TestCase
     @cache_store = ActiveSupport::Cache::MemoryStore.new
   end
 
-  def test_will_use_the_default_cache_store
-    store = Object.new
-    Cacheable::Middleware.default_cache_store = store
-    midleware = Cacheable::Middleware.new(Proc.new{})
+  def test_will_construct_the_default_cache_store
+    Cacheable::Middleware.default_cache_store = [:memory_store, { :custom => true }]
+    middleware = Cacheable::Middleware.new(Proc.new{})
 
-    assert_equal store, midleware.cache
+    assert_instance_of ActiveSupport::Cache::MemoryStore, middleware.cache
+    assert middleware.cache.options[:custom]
+  ensure
+    Cacheable::Middleware.default_cache_store = nil
+  end
+
+  def test_will_use_the_default_cache_store
+    Cacheable::Middleware.default_cache_store = ActiveSupport::Cache::MemoryStore.new(:custom => true)
+    middleware = Cacheable::Middleware.new(Proc.new{})
+
+    assert_instance_of ActiveSupport::Cache::MemoryStore, middleware.cache
+    assert middleware.cache.options[:custom]
   ensure
     Cacheable::Middleware.default_cache_store = nil
   end
 
   def test_will_fallback_to_using_rails_cache
-    midleware = Cacheable::Middleware.new(Proc.new{})
-    assert_equal Rails.cache, midleware.cache
+    middleware = Cacheable::Middleware.new(Proc.new{})
+    assert_equal Rails.cache, middleware.cache
   end
     
   def test_cache_miss_and_ignore
