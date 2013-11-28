@@ -34,7 +34,7 @@ module Cacheable
         h.key_data       = key_data       || cache_key_data
         h.version_data   = version_data   || cache_version_data
         h.block          = block
-        h.cache_store    = cache_store
+        h.cache_store    = Cacheable.cache_store
       end
 
       handler.run!

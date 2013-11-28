@@ -3,13 +3,8 @@ require 'useragent'
 module Cacheable
   class Middleware
 
-    class << self
-      attr_accessor :default_cache_store
-    end
-
-    def initialize(app, cache_store = nil)
+    def initialize(app) 
       @app = app
-      @cache_store = cache_store
     end
 
     def call(env)
@@ -45,8 +40,8 @@ module Cacheable
           cache_data << headers['Location'] if status == 301
 
           Cacheable.write_to_cache(env['cacheable.key']) do
-            cache.write(env['cacheable.key'], cache_data)
-            cache.write(env['cacheable.unversioned-key'], cache_data) if env['cacheable.unversioned-key']
+            Cacheable.cache_store.write(env['cacheable.key'], cache_data)
+            Cacheable.cache_store.write(env['cacheable.unversioned-key'], cache_data) if env['cacheable.unversioned-key']
           end
 
           # since we had to generate the gz version above already we may
@@ -69,10 +64,6 @@ module Cacheable
 
     def timestamp
       Time.now.to_i
-    end
-
-    def cache
-      @cache_store ||= ActiveSupport::Cache.lookup_store(*self.class.default_cache_store || Rails.cache)
     end
 
     def ie_ajax_request?(env)
