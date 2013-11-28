@@ -6,6 +6,15 @@ require 'cacheable/response_cache_handler'
 require 'cacheable/controller'
 
 module Cacheable
+
+  def self.cache_store=(thing)
+    @store=thing
+  end
+
+  def self.cache_store
+    @cache_store ||= ActiveSupport::Cache.lookup_store(*@store || Rails.cache)
+  end
+
   def self.log(message)
     Rails.logger.info "[Cacheable] #{message}"
   end
