@@ -7,8 +7,8 @@ require 'cacheable/controller'
 
 module Cacheable
 
-  def self.cache_store=(thing)
-    @store=thing
+  def self.cache_store=(store)
+    @store=store
   end
 
   def self.cache_store
