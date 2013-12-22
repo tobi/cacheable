@@ -9,6 +9,7 @@ require 'mocha'
 module Rails
   class Railtie  
     def self.initializer(*) ; end
+    def self.cache; end
   end
 end
 

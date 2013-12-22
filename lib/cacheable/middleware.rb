@@ -3,9 +3,8 @@ require 'useragent'
 module Cacheable
   class Middleware
 
-    def initialize(app, cache_store = nil)
+    def initialize(app)
       @app = app
-      @cache_store = cache_store
     end
 
     def call(env)
@@ -42,8 +41,8 @@ module Cacheable
 
           Cacheable.write_to_cache(env['cacheable.key']) do
             payload = MessagePack.dump(cache_data)
-            cache.write(env['cacheable.key'], payload, raw: true)
-            cache.write(env['cacheable.unversioned-key'], payload, raw: true) if env['cacheable.unversioned-key']
+            Cacheable.cache_store.write(env['cacheable.key'], payload, raw: true)
+            Cacheable.cache_store.write(env['cacheable.unversioned-key'], payload, raw: true) if env['cacheable.unversioned-key']
           end
 
           # since we had to generate the gz version above already we may
@@ -66,10 +65,6 @@ module Cacheable
 
     def timestamp
       Time.now.to_i
-    end
-
-    def cache
-      @cache_store ||= Rails.cache
     end
 
     def ie_ajax_request?(env)

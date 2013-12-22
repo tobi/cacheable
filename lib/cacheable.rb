@@ -5,6 +5,15 @@ require 'cacheable/controller'
 require 'msgpack'
 
 module Cacheable
+
+  def self.cache_store=(store)
+    @store=store
+  end
+
+  def self.cache_store
+    @cache_store ||= ActiveSupport::Cache.lookup_store(*@store || Rails.cache)
+  end
+
   def self.log(message)
     Rails.logger.info "[Cacheable] #{message}"
   end
