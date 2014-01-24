@@ -43,9 +43,9 @@ module Cacheable
     case data
     when Hash
       return data.inspect unless data.key?(:key)
-      key = hash_value_str(data, :key)
+      key = hash_value_str(data[:key])
       return key unless data.key?(:version)
-      version = hash_value_str(data, :version)
+      version = hash_value_str(data[:version])
       return [key, version].join(":")
     when Array
       data.inspect
@@ -62,11 +62,11 @@ module Cacheable
 
   class << self
     private
-    def hash_value_str(data, key)
-      if data[key].is_a?(Hash)
-          data[key].values.join(",")
+    def hash_value_str(data)
+      if data.is_a?(Hash)
+          data.values.join(",")
         else
-          data[key].to_s
+          data.to_s
       end
     end
   end
