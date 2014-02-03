@@ -25,8 +25,10 @@ module Cacheable
     end
 
     def response_cache(key_data=nil, version_data=nil, &block)
-      unless cache_configured? && cacheable_request?
-        Cacheable.log("Uncacheable request. cache_configured='#{!!cache_configured?}' cacheable_request='#{cacheable_request?}' params_cache='#{request.params[:cache] != 'false'}'")
+      cacheable_req = cacheable_request?
+      unless cache_configured? && cacheable_req
+        Cacheable.log("Uncacheable request. cache_configured='#{!!cache_configured?}' cacheable_request='#{cacheable_req}' params_cache='#{request.params[:cache] != 'false'}'")
+        response.headers['Cache-Control'.freeze] = 'no-cache, no-store'.freeze unless cacheable_req
         return yield
       end
 
