@@ -1,9 +1,8 @@
-require 'digest/md5'
-
 require 'cacheable/middleware'
 require 'cacheable/railtie'
 require 'cacheable/response_cache_handler'
 require 'cacheable/controller'
+require 'msgpack'
 
 module Cacheable
 
@@ -42,7 +41,13 @@ module Cacheable
 
   def self.cache_key_for(data)
     case data
-    when Hash, Array
+    when Hash
+      return data.inspect unless data.key?(:key)
+      key = hash_value_str(data[:key])
+      return key unless data.key?(:version)
+      version = hash_value_str(data[:version])
+      return [key, version].join(":")
+    when Array
       data.inspect
     when Time, DateTime
       data.to_i
@@ -52,6 +57,17 @@ module Cacheable
       data.inspect
     else
       data.to_s.inspect
+    end
+  end
+
+  class << self
+    private
+    def hash_value_str(data)
+      if data.is_a?(Hash)
+          data.values.join(",")
+        else
+          data.to_s
+      end
     end
   end
 end

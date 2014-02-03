@@ -1,4 +1,4 @@
-require 'cityhash'
+require 'digest/md5'
 
 module Cacheable
   class ResponseCacheHandler
@@ -44,7 +44,7 @@ module Cacheable
     end
 
     def key_hash(key)
-      "cachable:#{CityHash.hash128(key)}"
+      "cacheable:#{Digest::MD5.hexdigest(key)}"
     end
 
     def versioned_key
@@ -56,8 +56,11 @@ module Cacheable
     end
 
     def cacheable_info_dump
+      # This should come from nginx
+      suggested_key = @env.has_key?('HTTP_X_CACHEABLE_KEY') ? "#{@env['HTTP_X_CACHEABLE_KEY']} (#{@env['HTTP_X_CACHEABLE_SIGNATURE']})" : nil
       [
         "Browser gzip: #{@env['gzip']}",
+        "Suggested key: #{suggested_key}",
         "Raw cacheable.key: #{versioned_key}",
         "cacheable.key: #{versioned_key_hash}",
         "If-None-Match: #{@env['HTTP_IF_NONE_MATCH']}"
@@ -108,7 +111,9 @@ module Cacheable
     end
 
     def serve_from_cache(cache_key_hash, cache_age_tolerance=nil, message = "Cache hit: server")
-      if hit = @cache_store.read(cache_key_hash)
+      if raw = @cache_store.read(cache_key_hash)
+        hit = MessagePack.load(raw)
+
         @env['cacheable.miss']  = false
         @env['cacheable.store'] = 'server'
 

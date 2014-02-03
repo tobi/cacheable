@@ -3,7 +3,7 @@ require 'useragent'
 module Cacheable
   class Middleware
 
-    def initialize(app) 
+    def initialize(app)
       @app = app
     end
 
@@ -40,8 +40,9 @@ module Cacheable
           cache_data << headers['Location'] if status == 301
 
           Cacheable.write_to_cache(env['cacheable.key']) do
-            Cacheable.cache_store.write(env['cacheable.key'], cache_data)
-            Cacheable.cache_store.write(env['cacheable.unversioned-key'], cache_data) if env['cacheable.unversioned-key']
+            payload = MessagePack.dump(cache_data)
+            Cacheable.cache_store.write(env['cacheable.key'], payload, raw: true)
+            Cacheable.cache_store.write(env['cacheable.unversioned-key'], payload, raw: true) if env['cacheable.unversioned-key']
           end
 
           # since we had to generate the gz version above already we may
