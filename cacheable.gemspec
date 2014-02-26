@@ -23,7 +23,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency "rake"
 
   s.add_runtime_dependency "activesupport"
-  s.add_runtime_dependency "actionpack"
+  s.add_runtime_dependency "actionpack", ">= 3.2.17"
   s.add_runtime_dependency "useragent"
   s.add_runtime_dependency "msgpack"
 end
