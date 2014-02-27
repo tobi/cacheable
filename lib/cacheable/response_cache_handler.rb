@@ -7,6 +7,7 @@ module Cacheable
       @controller = controller
       @env = controller.request.env
       @cache_age_tolerance = controller.cache_age_tolerance_in_seconds
+      @serve_unversioned = controller.serve_unversioned_cacheable_entry?
 
       yield self if block_given?
     end
@@ -73,7 +74,11 @@ module Cacheable
       serve_from_browser_cache(versioned_key_hash)
 
       # Memcached
-      serve_from_cache(versioned_key_hash)
+      if @serve_unversioned
+        serve_from_cache(unversioned_key_hash, nil, "Cache hit: server (unversioned)")
+      else
+        serve_from_cache(versioned_key_hash)
+      end
 
       # execute if we can get the lock
       execute

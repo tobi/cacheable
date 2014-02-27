@@ -107,6 +107,16 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
     assert_equal 'some text', controller.response.body
   end
 
+  def test_serve_unversioned_cacheable_entry
+    controller.request.env['gzip'] = false
+    assert @controller.respond_to?(:serve_unversioned_cacheable_entry?)
+    @controller.expects(:serve_unversioned_cacheable_entry?).returns(true)
+    @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page_serialized)
+    expect_page_rendered(page_uncompressed)
+    handler.run!
+    assert_env(false, 'server')
+  end
+
   def test_double_render_still_renders
     @controller.stubs(:serve_from_browser_cache)
     @controller.stubs(:serve_from_cache)
