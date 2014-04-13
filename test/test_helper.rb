@@ -4,7 +4,7 @@ require 'active_support/cache'
 require 'active_support/cache/memory_store'
 require 'active_support/core_ext/module/deprecation'
 require 'action_controller'
-require 'mocha'
+require 'mocha/mini_test'
 
 module Rails
   class Railtie  
