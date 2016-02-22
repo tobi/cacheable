@@ -5,6 +5,7 @@ require "cacheable/version"
 Gem::Specification.new do |s|
   s.name        = "cacheable"
   s.version     = Cacheable::VERSION
+  s.license     = "MIT"
   s.authors     = ["Tobias Lütke", "Burke Libbey"]
   s.email       = ["tobi@shopify.com", "burke@burkelibbey.org"]
   s.homepage    = ""
