@@ -7,6 +7,7 @@ require 'msgpack'
 module Cacheable
 
   def self.cache_store=(store)
+    @cache_store = nil
     @store=store
   end
 
