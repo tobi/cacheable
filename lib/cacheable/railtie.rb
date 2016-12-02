@@ -2,7 +2,7 @@ module Cacheable
 
   class Railtie < ::Rails::Railtie
     initializer "cachable.configure_active_record" do |config|
-      config.middleware.insert_before 'FixBadAcceptHeader', Cacheable::Middleware
+      config.middleware.insert_after Rack::Head, Cacheable::Middleware
       ActionController::Base.send(:include, Cacheable::Controller)
 
       ActiveRecord::Base.class_eval do
