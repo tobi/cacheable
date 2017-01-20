@@ -67,10 +67,16 @@ module Cacheable
       Time.now.to_i
     end
 
+    REQUESTED_WITH = "HTTP_X_REQUESTED_WITH".freeze
+    ACCEPT = "HTTP_ACCEPT".freeze
+    USER_AGENT = "HTTP_USER_AGENT".freeze
     def ie_ajax_request?(env)
-      return false unless env["HTTP_USER_AGENT"].present? && (env["HTTP_X_REQUESTED_WITH"].present? || env["HTTP_ACCEPT"].present?)
-      agent = UserAgent.parse(env["HTTP_USER_AGENT"])
-      agent.browser == "Internet Explorer" && (env["HTTP_X_REQUESTED_WITH"] == "XmlHttpRequest" || env["HTTP_ACCEPT"] == "application/json")
+      return false unless env[USER_AGENT].present?
+      if env[REQUESTED_WITH] == "XmlHttpRequest".freeze || env[ACCEPT] == "application/json".freeze
+        UserAgent.parse(env["HTTP_USER_AGENT"]).is_a?(UserAgent::Browsers::InternetExplorer)
+      else
+        false
+      end
     end
   end
 end
