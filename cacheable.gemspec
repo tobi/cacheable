@@ -25,7 +25,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency "rails", ">= 4.2"
 
   s.add_runtime_dependency "activesupport"
-  s.add_runtime_dependency "actionpack", ">= 3.2.17"
+  s.add_runtime_dependency "actionpack", ">= 4.1"
   s.add_runtime_dependency "useragent"
   s.add_runtime_dependency "msgpack"
 end

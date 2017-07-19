@@ -140,7 +140,7 @@ module Cacheable
               body = Cacheable.decompress(body)
             end
 
-            render text: body, status: status
+            render plain: body, status: status
           end
         end
       end
