@@ -1,3 +1,6 @@
 language: ruby
 rvm:
   - 2.3.1
+gemfile:
+- gemfiles/actionpack-4-0.gemfile
+- gemfiles/actionpack-5-0.gemfile

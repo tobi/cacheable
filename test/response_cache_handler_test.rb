@@ -43,7 +43,7 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
 
   def test_client_cache_hit
     controller.request.env['HTTP_IF_NONE_MATCH'] = handler.versioned_key_hash
-    controller.expects(:head).with(:not_modified) 
+    controller.expects(:head).with(:not_modified)
     handler.run!
     assert_env(false, 'client')
   end
@@ -141,14 +141,14 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
     status, content_type, body, timestamp = page
     Cacheable.expects(:decompress).returns(body).once
 
-    @controller.expects(:render).with(text: body, status: status)
+    @controller.expects(:render).with(plain: body, status: status)
     @controller.response.headers.expects(:[]=).with('Content-Type', content_type)
   end
 
   def expect_compressed_page_rendered(page)
     status, content_type, body, timestamp = page
     Cacheable.expects(:decompress).never
-    @controller.expects(:render).with(text: body, status: status)
+    @controller.expects(:render).with(plain: body, status: status)
     @controller.response.headers.expects(:[]=).with('Content-Type', content_type)
     @controller.response.headers.expects(:[]=).with('Content-Encoding', "gzip")
   end
