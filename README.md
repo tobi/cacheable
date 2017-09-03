@@ -1,5 +1,85 @@
-# Cacheable
+# Cacheable [![Build Status](https://secure.travis-ci.org/Shopify/cacheable.png)](http://travis-ci.org/Shopify/cacheable)
 
-Copyright 2012 Shopify; MIT License
+### Features
 
-[![Build Status](https://secure.travis-ci.org/Shopify/cacheable.png)](http://travis-ci.org/Shopify/cacheable)
+* Serve gzip'd content
+* Add ETag and 304 Not Modified headers
+* Generational caching
+* No explicit expiry
+
+### Usage
+
+1. include ```Cacheable::Controller``` if your controller does not extend ```ActionController::Base```
+
+```
+class PostsController < ActionController::API
+  include Cacheable::Controller
+end 
+```
+
+2. use ```#response_cache``` method to any desired controller's action
+
+```
+class PostsController < ApplicationController
+  def show
+    response_cache do
+      @post = @shop.posts.find(params[:id])
+      respond_with(@post)
+    end
+  end
+end
+```
+
+3. **(optional)** override custom cache key data. For default, cache key is defined by URL and query string
+
+```
+class PostsController < ApplicationController
+  before_action :set_shop
+
+  def index
+    response_cache do
+      @post = @shop.posts
+      respond_with(@post)
+    end
+  end
+
+  def show
+    response_cache do
+      @post = @shop.posts.find(params[:id])
+      respond_with(@post)
+    end
+  end
+
+  def another_action
+    # custom cache key data
+    cache_key = {
+      action: action_name,
+      format: request.format,
+      shop_updated_at: @shop.updated_at
+      # you may add more keys here
+    }
+    response_cache cache_key do
+      @post = @shop.posts.find(params[:id])
+      respond_with(@post)
+    end
+  end
+
+  # override default cache key data globally per class
+  def cache_key_data
+    {
+      action: action_name,
+      format: request.format,
+      params: params.slice(:id),
+      shop_version: @shop.version
+      # you may add more keys here
+     }
+  end
+
+  def set_shop
+    # @shop = ...
+  end
+end 
+```
+
+Copyright 2012-2017 Shopify  
+MIT License
