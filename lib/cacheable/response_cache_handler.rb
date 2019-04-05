@@ -57,15 +57,14 @@ module Cacheable
     end
 
     def cacheable_info_dump
-      # This should come from nginx
-      suggested_key = @env.has_key?('HTTP_X_CACHEABLE_KEY') ? "#{@env['HTTP_X_CACHEABLE_KEY']} (#{@env['HTTP_X_CACHEABLE_SIGNATURE']})" : nil
-      [
-        "Browser gzip: #{@env['gzip']}",
-        "Suggested key: #{suggested_key}",
+      log_info = [
         "Raw cacheable.key: #{versioned_key}",
         "cacheable.key: #{versioned_key_hash}",
-        "If-None-Match: #{@env['HTTP_IF_NONE_MATCH']}"
-      ].join(", ")
+      ]
+      if @env['HTTP_IF_NONE_MATCH']
+        log_info.push("If-None-Match: #{@env['HTTP_IF_NONE_MATCH']}")
+      end
+      log_info.join(', ')
     end
 
     def try_to_serve_from_cache
