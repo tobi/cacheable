@@ -61,8 +61,10 @@ module Cacheable
         "Raw cacheable.key: #{versioned_key}",
         "cacheable.key: #{versioned_key_hash}",
       ]
-      log_info.push("If-None-Match: #{@env['HTTP_IF_NONE_MATCH']}") if @env['HTTP_IF_NONE_MATCH']
-      log_info.join(", ")
+      if @env['HTTP_IF_NONE_MATCH']
+        log_info.push("If-None-Match: #{@env['HTTP_IF_NONE_MATCH']}")
+      end
+      log_info.join(', ')
     end
 
     def try_to_serve_from_cache
