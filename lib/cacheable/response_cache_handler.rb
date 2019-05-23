@@ -2,14 +2,18 @@ require 'digest/md5'
 
 module Cacheable
   class ResponseCacheHandler
-    attr_accessor :key_data, :version_data, :block, :cache_store
-    def initialize(controller)
-      @controller = controller
-      @env = controller.request.env
-      @cache_age_tolerance = controller.cache_age_tolerance_in_seconds
-      @serve_unversioned = controller.serve_unversioned_cacheable_entry?
+    def initialize(**kwargs, &block)
+      @cache_miss_block = block
 
-      yield self if block_given?
+      @key_data = kwargs.fetch(:key_data)
+      @version_data = kwargs.fetch(:version_data)
+      @env = kwargs.fetch(:env)
+      @cache_age_tolerance = kwargs.fetch(:cache_age_tolerance)
+
+      @serve_unversioned = kwargs[:serve_unversioned]
+      @force_refill_cache = kwargs[:force_refill_cache]
+      @cache_store = kwargs[:cache_store] || Cacheable.cache_store
+      @headers = kwargs[:headers] || {}
     end
 
     def run!
@@ -19,15 +23,14 @@ module Cacheable
 
       Cacheable.log cacheable_info_dump
 
-      # :cache_return is thrown as soon as we've sent data to the client.
-      catch :cache_return do
-        try_to_serve_from_cache unless @controller.force_refill_cache?
 
-        # Nothing was thrown; this request cannot be handled from cache.
-        # Yield to the controller and mark for writing into cache.
-        @env['cacheable.miss'] = true
-        run_controller_action!
-      end
+      try_to_serve_from_cache unless @force_refill_cache
+      return @response if defined?(@response)
+
+      # No cache hit; this request cannot be handled from cache.
+      # Yield to the controller and mark for writing into cache.
+      @env['cacheable.miss'] = true
+      @cache_miss_block.call
     end
 
     def versioned_key_hash
@@ -40,20 +43,16 @@ module Cacheable
 
     private
 
-    def run_controller_action!
-      @controller.instance_eval(&@block)
-    end
-
     def key_hash(key)
       "cacheable:#{Digest::MD5.hexdigest(key)}"
     end
 
     def versioned_key
-      @versioned_key ||= Cacheable.cache_key_for(key: key_data, version: version_data)
+      @versioned_key ||= Cacheable.cache_key_for(key: @key_data, version: @version_data)
     end
 
     def unversioned_key
-      @unversioned_key ||= Cacheable.cache_key_for(key: key_data)
+      @unversioned_key ||= Cacheable.cache_key_for(key: @key_data)
     end
 
     def cacheable_info_dump
@@ -68,9 +67,9 @@ module Cacheable
     end
 
     def try_to_serve_from_cache
-
       # Etag
       serve_from_browser_cache(versioned_key_hash)
+      return if defined?(@response)
 
       # Memcached
       if @serve_unversioned
@@ -78,15 +77,15 @@ module Cacheable
       else
         serve_from_cache(versioned_key_hash)
       end
+      return if defined?(@response)
 
       # execute if we can get the lock
       execute
+      return if defined?(@response)
 
       # serve a stale version
       if serving_from_noncurrent_but_recent_version_acceptable?
-
         serve_from_cache(unversioned_key_hash, @cache_age_tolerance, "Cache hit: server (recent)")
-
       end
     end
 
@@ -95,7 +94,8 @@ module Cacheable
       if @env['cacheable.locked'] || Cacheable.acquire_lock(versioned_key_hash)
         @env['cacheable.locked'] = true
         @env['cacheable.miss']  = true
-        cache_return!("Refilling cache", &@block)
+        Cacheable.log("Refilling cache")
+        @response = @cache_miss_block.call
       end
     end
 
@@ -108,9 +108,11 @@ module Cacheable
         @env['cacheable.miss']  = false
         @env['cacheable.store'] = 'client'
 
-        cache_return!("Cache hit: client") do
-          head :not_modified
-        end
+        @headers.delete('Content-Type')
+        @headers.delete('Content-Length')
+
+        Cacheable.log("Cache hit: client")
+        @response = [304, @headers, []]
       end
     end
 
@@ -126,21 +128,20 @@ module Cacheable
         if cache_age_tolerance && page_too_old(timestamp, cache_age_tolerance)
           Cacheable.log "Found an unversioned cache entry, but it was too old (#{timestamp})"
         else
-          cache_return!(message) do
-            response.headers['Content-Type'] = content_type
+          @headers['Content-Type'] = content_type
 
-            response.headers['Location'] = location if location
+          @headers['Location'] = location if location
 
-            if request.env["gzip"]
-              response.headers['Content-Encoding'] = "gzip"
-            else
-              # we have to uncompress because the client doesn't support gzip
-              Cacheable.log "uncompressing for client without gzip"
-              body = Cacheable.decompress(body)
-            end
-
-            render plain: body, status: status
+          if @env["gzip"]
+            @headers['Content-Encoding'] = "gzip"
+          else
+            # we have to uncompress because the client doesn't support gzip
+            Cacheable.log "uncompressing for client without gzip"
+            body = Cacheable.decompress(body)
           end
+
+          Cacheable.log(message)
+          @response = [status, @headers, [body]]
         end
       end
     end
@@ -148,12 +149,5 @@ module Cacheable
     def page_too_old(timestamp, cache_age_tolerance)
       !timestamp || timestamp < (Time.now.to_i - cache_age_tolerance)
     end
-
-    def cache_return!(message, &block)
-      Cacheable.log message
-      @controller.instance_eval(&block)
-      throw :cache_return
-    end
-
   end
 end

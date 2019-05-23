@@ -71,7 +71,7 @@ module Cacheable
     ACCEPT = "HTTP_ACCEPT".freeze
     USER_AGENT = "HTTP_USER_AGENT".freeze
     def ie_ajax_request?(env)
-      return false unless env[USER_AGENT].present?
+      return false unless !env[USER_AGENT].nil? && !env[USER_AGENT].empty?
       if env[REQUESTED_WITH] == "XmlHttpRequest".freeze || env[ACCEPT] == "application/json".freeze
         UserAgent.parse(env["HTTP_USER_AGENT"]).is_a?(UserAgent::Browsers::InternetExplorer)
       else

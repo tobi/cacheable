@@ -1,11 +1,11 @@
 require File.dirname(__FILE__) + "/test_helper"
 
-class CacheableTest < MiniTest::Unit::TestCase
+class CacheableControllerTest < MiniTest::Unit::TestCase
 
   class MockRequest
     def get?; true ;end
     def params; {}; end
-    def env; {}; end
+    def env; @env ||= {}; end
   end
 
   class MockResponse
@@ -18,24 +18,48 @@ class CacheableTest < MiniTest::Unit::TestCase
     def cache_configured?; true ;end
     def params; {}; end
     def request
-      MockRequest.new
+      @request ||= MockRequest.new
     end
     def response
       @response ||= MockResponse.new
     end
   end
 
-  def test_middleware_and_controller_use_the_same_cache_store
-    m = MockController.new
-    Cacheable::ResponseCacheHandler.any_instance.expects(:cache_store=).with(Cacheable.cache_store)
-    Cacheable::ResponseCacheHandler.any_instance.expects(:run!)
-    m.response_cache
+  def setup
+    @cache_store = stub.tap { |s| s.stubs(read: nil)}
+    Cacheable.cache_store = @cache_store
+    Cacheable.stubs(:acquire_lock).returns(true)
   end
 
   def test_cache_control_no_store_set_for_uncacheable_requests
-    m = MockController.new
-    m.expects(:cacheable_request?).returns(false)
-    m.response_cache{}
-    assert_equal m.response.headers['Cache-Control'], 'no-cache, no-store'
+    controller.expects(:cacheable_request?).returns(false)
+    controller.response_cache{}
+    assert_equal controller.response.headers['Cache-Control'], 'no-cache, no-store'
+  end
+
+  def test_server_cache_hit
+    controller.request.env['gzip'] = false
+    @cache_store.expects(:read).returns(page_serialized)
+    controller.expects(:render).with(plain: '<body>hi.</body>', status: 200)
+
+    controller.response_cache{}
+  end
+
+  def test_client_cache_hit
+    controller.request.env['HTTP_IF_NONE_MATCH'] = 'deadbeef'
+    Cacheable::ResponseCacheHandler.any_instance.expects(:versioned_key_hash).returns('deadbeef').at_least_once
+    controller.expects(:head).with(:not_modified)
+
+    controller.response_cache{}
+  end
+
+  private
+
+  def controller
+    @controller ||= MockController.new
+  end
+
+  def page_serialized
+    MessagePack.dump([200, "text/html", Cacheable.compress("<body>hi.</body>"), 1331765506])
   end
 end

@@ -1,22 +1,24 @@
 require 'cacheable/middleware'
-require 'cacheable/railtie'
+require 'cacheable/railtie' if defined?(Rails)
 require 'cacheable/response_cache_handler'
-require 'cacheable/controller'
 require 'msgpack'
 
 module Cacheable
 
-  def self.cache_store=(store)
-    @cache_store = nil
-    @store=store
+  def self.cache_store=(cache_store)
+    @cache_store = cache_store
   end
 
   def self.cache_store
-    @cache_store ||= ActiveSupport::Cache.lookup_store(*@store || Rails.cache)
+    @cache_store
   end
 
   def self.log(message)
-    Rails.logger.info "[Cacheable] #{message}"
+    @logger.info "[Cacheable] #{message}"
+  end
+
+  def self.logger=(logger)
+    @logger = logger
   end
 
   def self.acquire_lock(cache_key)
