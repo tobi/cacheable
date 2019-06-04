@@ -36,14 +36,26 @@ module Cacheable
         return yield
       end
 
-      handler = Cacheable::ResponseCacheHandler.new(self) do |h|
-        h.key_data       = key_data       || cache_key_data
-        h.version_data   = version_data   || cache_version_data
-        h.block          = block
-        h.cache_store    = Cacheable.cache_store
-      end
+      handler = Cacheable::ResponseCacheHandler.new(
+        key_data:              key_data || cache_key_data,
+        version_data:          version_data || cache_version_data,
+        env:                   request.env,
+        cache_age_tolerance:   cache_age_tolerance_in_seconds,
+        serve_unversioned:     serve_unversioned_cacheable_entry?,
+        force_refill_cache:    force_refill_cache?,
+        headers:               response.headers,
+        &block
+      )
 
-      handler.run!
+      status, _headers, body = handler.run!
+
+      return if request.env['cacheable.miss']
+      case request.env['cacheable.store']
+      when 'server'
+        render status: status, plain: body.first
+      when 'client'
+        head :not_modified
+      end
     end
   end
 end

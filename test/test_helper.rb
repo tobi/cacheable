@@ -9,6 +9,8 @@ require 'mocha/mini_test'
 
 require 'cacheable'
 
+Cacheable.logger = Class.new { def info(a); end }.new
+
 class MockController < ActionController::Base
   def self.after_filter(*args); end
 
@@ -35,7 +37,7 @@ class MockController < ActionController::Base
   end
 
   def logger
-    Class.new { def info(a); end }.new
+    Cacheable.logger
   end
 
   include Cacheable::Controller

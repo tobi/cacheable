@@ -8,7 +8,7 @@ module Rails
   end
 end
 
-Cacheable.cache_store = :memory_store
+Cacheable.cache_store = ActiveSupport::Cache.lookup_store(:memory_store)
 
 def app(env)
   body = block_given? ? [yield] : ['Hi']

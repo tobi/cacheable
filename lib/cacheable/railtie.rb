@@ -1,3 +1,5 @@
+require 'cacheable/controller'
+
 module Cacheable
 
   class Railtie < ::Rails::Railtie
