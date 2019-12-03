@@ -1,12 +1,11 @@
 require File.dirname(__FILE__) + "/test_helper"
 
-
-module Rails
-
-  def self.logger
+module EmptyLogger
+  def logger
     @logger ||= Logger.new(nil)
   end
 end
+Rails.singleton_class.prepend(EmptyLogger)
 
 Cacheable.cache_store = ActiveSupport::Cache.lookup_store(:memory_store)
 
