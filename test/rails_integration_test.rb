@@ -13,7 +13,7 @@ end
 
 Dummy::Application.initialize!
 
-class RailsIntegrationTest < MiniTest::Unit::TestCase
+class RailsIntegrationTest < Minitest::Test
   def test_middleware_is_included
     assert_includes Dummy::Application.middleware, Cacheable::Middleware
   end

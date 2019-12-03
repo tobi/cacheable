@@ -69,7 +69,7 @@ def client_hit_app(env)
   [ 304, {'Content-Type' => 'text/plain'}, body ]
 end
 
-class MiddlewareTest < MiniTest::Unit::TestCase
+class MiddlewareTest < Minitest::Test
 
   def test_cache_miss_and_ignore
     env = Rack::MockRequest.env_for("http://example.com/index.html")

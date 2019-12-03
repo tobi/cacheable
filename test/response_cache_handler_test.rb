@@ -2,7 +2,7 @@ require File.dirname(__FILE__) + "/test_helper"
 
 ActionController::Base.cache_store = :memory_store
 
-class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
+class ResponseCacheHandlerTest < Minitest::Test
 
   def setup
     @cache_store = stub.tap { |s| s.stubs(read: nil)}
