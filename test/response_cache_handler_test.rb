@@ -142,14 +142,14 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
   end
 
   def expect_page_rendered(page)
-    status, content_type, body, timestamp = page
+    _status, content_type, body, _timestamp = page
     Cacheable.expects(:decompress).returns(body).once
 
     @controller.response.headers.expects(:[]=).with('Content-Type', content_type)
   end
 
   def expect_compressed_page_rendered(page)
-    status, content_type, body, timestamp = page
+    _status, content_type, _body, _timestamp = page
     Cacheable.expects(:decompress).never
 
     @controller.response.headers.expects(:[]=).with('Content-Type', content_type)
