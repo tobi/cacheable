@@ -136,7 +136,13 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
     uvkh = handler.unversioned_key_hash
     assert_equal true,  controller.request.env['cacheable.cache']
     assert_equal miss,  controller.request.env['cacheable.miss']
-    assert_equal store, controller.request.env['cacheable.store'] unless store == :anything
+
+    if store.nil?
+      assert_nil controller.request.env['cacheable.store']
+    elsif store != :anything
+      assert_equal store, controller.request.env['cacheable.store']
+    end
+
     assert_equal vkh,   controller.request.env['cacheable.key']
     assert_equal uvkh,  controller.request.env['cacheable.unversioned-key']
   end
