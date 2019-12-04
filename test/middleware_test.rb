@@ -1,12 +1,11 @@
 require File.dirname(__FILE__) + "/test_helper"
 
-
-module Rails
-
-  def self.logger
+module EmptyLogger
+  def logger
     @logger ||= Logger.new(nil)
   end
 end
+Rails.singleton_class.prepend(EmptyLogger)
 
 Cacheable.cache_store = ActiveSupport::Cache.lookup_store(:memory_store)
 
@@ -19,7 +18,7 @@ def not_found(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = true
   env['cacheable.key']   = '"abcd"'
-  
+
   body = block_given? ? [yield] : ['Hi']
   [ 404, {'Content-Type' => 'text/plain'}, body ]
 end
@@ -30,7 +29,6 @@ def cached_moved(env)
   env['cacheable.key']   = '"abcd"'
   env['cacheable.store'] = 'server'
 
-  body = block_given? ? [yield] : ['Hi']
   [ 301, {'Location' => 'http://shopify.com'}, []]
 end
 
@@ -39,55 +37,54 @@ def moved(env)
   env['cacheable.miss']  = true
   env['cacheable.key']   = '"abcd"'
 
-  body = block_given? ? [yield] : ['Hi']
   [ 301, {'Location' => 'http://shopify.com', 'Content-Type' => 'text/plain'}, []]
 end
 
-def cacheable_app(env)  
+def cacheable_app(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = true
   env['cacheable.key']   = '"abcd"'
-  
+
   body = block_given? ? [yield] : ['Hi']
   [ 200, {'Content-Type' => 'text/plain'}, body ]
 end
 
-def already_cached_app(env)  
+def already_cached_app(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = false
   env['cacheable.key']   = '"abcd"'
   env['cacheable.store'] = 'server'
-  
+
   body = block_given? ? [yield] : ['Hi']
   [ 200, {'Content-Type' => 'text/plain'}, body ]
 end
 
-def client_hit_app(env)  
+def client_hit_app(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = false
   env['cacheable.key']   = '"abcd"'
   env['cacheable.store'] = 'client'
-  
+
   body = block_given? ? [yield] : ['']
   [ 304, {'Content-Type' => 'text/plain'}, body ]
 end
 
-class MiddlewareTest < MiniTest::Unit::TestCase
-  
+class MiddlewareTest < Minitest::Test
+
   def test_cache_miss_and_ignore
     env = Rack::MockRequest.env_for("http://example.com/index.html")
-    
+
     ware = Cacheable::Middleware.new(method(:app))
     result = ware.call(env)
 
     assert_nil result[1]['ETag']
   end
-      
+
   def test_cache_miss_and_not_found
     Cacheable.cache_store.expects(:write).once()
-    
+
     env = Rack::MockRequest.env_for("http://example.com/index.html")
-    
+
     ware = Cacheable::Middleware.new(method(:not_found))
     result = ware.call(env)
 
@@ -120,9 +117,9 @@ class MiddlewareTest < MiniTest::Unit::TestCase
   def test_cache_miss_and_store
     Cacheable::Middleware.any_instance.stubs(timestamp: 424242)
     Cacheable.cache_store.expects(:write).with('"abcd"', MessagePack.dump([200, 'text/plain', Cacheable.compress('Hi'), 424242]), raw: true).once()
-    
+
     env = Rack::MockRequest.env_for("http://example.com/index.html")
-    
+
     ware = Cacheable::Middleware.new(method(:cacheable_app))
     result = ware.call(env)
 
@@ -134,15 +131,15 @@ class MiddlewareTest < MiniTest::Unit::TestCase
     assert_nil env['cacheable.store']
 
     # no gzip support here
-    assert !result[1]['Content-Encoding']    
+    assert !result[1]['Content-Encoding']
   end
 
   def test_cache_miss_and_store_on_moved
     Cacheable::Middleware.any_instance.stubs(timestamp: 424242)
     Cacheable.cache_store.expects(:write).with('"abcd"', MessagePack.dump([301, 'text/plain', Cacheable.compress(''), 424242, 'http://shopify.com']), raw:true).once()
-    
+
     env = Rack::MockRequest.env_for("http://example.com/index.html")
-    
+
     ware = Cacheable::Middleware.new(method(:moved))
     result = ware.call(env)
 
@@ -154,16 +151,16 @@ class MiddlewareTest < MiniTest::Unit::TestCase
     assert_nil env['cacheable.store']
 
     # no gzip support here
-    assert !result[1]['Content-Encoding']    
+    assert !result[1]['Content-Encoding']
   end
 
   def test_cache_miss_and_store_with_gzip_support
     Cacheable::Middleware.any_instance.stubs(timestamp: 424242)
     Cacheable.cache_store.expects(:write).with('"abcd"', MessagePack.dump([200, 'text/plain', Cacheable.compress('Hi'), 424242]), raw: true).once()
-    
+
     env = Rack::MockRequest.env_for("http://example.com/index.html")
     env['HTTP_ACCEPT_ENCODING'] = 'deflate, gzip'
-    
+
     ware = Cacheable::Middleware.new(method(:cacheable_app))
     result = ware.call(env)
 
@@ -178,12 +175,12 @@ class MiddlewareTest < MiniTest::Unit::TestCase
     assert_equal 'gzip', result[1]['Content-Encoding']
     assert_equal [Cacheable.compress("Hi")], result[2]
   end
-  
+
   def test_cache_hit_server
     Cacheable.cache_store.expects(:write).times(0)
-    
+
     env = Rack::MockRequest.env_for("http://example.com/index.html")
-  
+
     ware = Cacheable::Middleware.new(method(:already_cached_app))
     result = ware.call(env)
 
@@ -192,12 +189,12 @@ class MiddlewareTest < MiniTest::Unit::TestCase
     assert_equal 'server', env['cacheable.store']
     assert_equal '"abcd"', result[1]['ETag']
   end
-  
+
   def test_cache_hit_client
     Cacheable.cache_store.expects(:write).times(0)
-    
+
     env = Rack::MockRequest.env_for("http://example.com/index.html")
-    
+
     ware = Cacheable::Middleware.new(method(:client_hit_app))
     result = ware.call(env)
 

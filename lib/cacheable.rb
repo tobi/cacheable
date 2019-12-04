@@ -67,9 +67,9 @@ module Cacheable
     private
     def hash_value_str(data)
       if data.is_a?(Hash)
-          data.values.join(",")
-        else
-          data.to_s
+        data.values.join(",")
+      else
+        data.to_s
       end
     end
   end

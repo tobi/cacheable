@@ -5,7 +5,7 @@ require 'active_support/cache/memory_store'
 require 'active_support/core_ext/module/deprecation'
 require 'rails'
 require 'action_controller/railtie'
-require 'mocha/mini_test'
+require 'mocha/minitest'
 
 require 'cacheable'
 

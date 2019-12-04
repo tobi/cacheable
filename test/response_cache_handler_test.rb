@@ -2,7 +2,7 @@ require File.dirname(__FILE__) + "/test_helper"
 
 ActionController::Base.cache_store = :memory_store
 
-class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
+class ResponseCacheHandlerTest < Minitest::Test
 
   def setup
     @cache_store = stub.tap { |s| s.stubs(read: nil)}
@@ -136,20 +136,26 @@ class ResponseCacheHandlerTest < MiniTest::Unit::TestCase
     uvkh = handler.unversioned_key_hash
     assert_equal true,  controller.request.env['cacheable.cache']
     assert_equal miss,  controller.request.env['cacheable.miss']
-    assert_equal store, controller.request.env['cacheable.store'] unless store == :anything
+
+    if store.nil?
+      assert_nil controller.request.env['cacheable.store']
+    elsif store != :anything
+      assert_equal store, controller.request.env['cacheable.store']
+    end
+
     assert_equal vkh,   controller.request.env['cacheable.key']
     assert_equal uvkh,  controller.request.env['cacheable.unversioned-key']
   end
 
   def expect_page_rendered(page)
-    status, content_type, body, timestamp = page
+    _status, content_type, body, _timestamp = page
     Cacheable.expects(:decompress).returns(body).once
 
     @controller.response.headers.expects(:[]=).with('Content-Type', content_type)
   end
 
   def expect_compressed_page_rendered(page)
-    status, content_type, body, timestamp = page
+    _status, content_type, _body, _timestamp = page
     Cacheable.expects(:decompress).never
 
     @controller.response.headers.expects(:[]=).with('Content-Type', content_type)
