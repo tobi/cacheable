@@ -15,14 +15,14 @@ Gem::Specification.new do |s|
   s.files         = Dir["lib/**/*.rb", "README.rdoc", "LICENSE.txt"]
   s.require_paths = ["lib"]
 
+  s.required_ruby_version = ">= 2.4.0"
+
   s.add_runtime_dependency "useragent"
   s.add_runtime_dependency "msgpack"
 
   s.add_development_dependency "minitest", ">= 5.13.0"
   s.add_development_dependency "mocha", ">= 1.10.0"
   s.add_development_dependency "rake"
-  s.add_development_dependency "rails", ">= 4.2"
-  s.add_development_dependency "activesupport"
-  s.add_development_dependency "actionpack", ">= 4.1"
+  s.add_development_dependency "rails", ">= 5.0"
   s.add_development_dependency "tzinfo-data", ">= 1.2019.3"
 end

@@ -7,6 +7,13 @@
 * Generational caching
 * No explicit expiry
 
+### Support
+
+This gem supports the following versions of Ruby and Rails:
+
+* Ruby 2.4.0+
+* Rails 5.0.0+
+
 ### Usage
 
 1. include `Cacheable::Controller` if your controller does not extend `ActionController::Base`

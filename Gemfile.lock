@@ -141,12 +141,10 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  actionpack (>= 4.1)
-  activesupport
   cacheable!
   minitest (>= 5.13.0)
   mocha (>= 1.10.0)
-  rails (>= 4.2)
+  rails (~> 6.0.0)
   rake
   tzinfo-data (>= 1.2019.3)
 
