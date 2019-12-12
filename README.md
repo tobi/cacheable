@@ -81,5 +81,6 @@ class PostsController < ApplicationController
 end 
 ```
 
-Copyright 2012-2017 Shopify  
-MIT License
+### License
+
+Cacheable is released under the [MIT License](LICENSE.txt).
