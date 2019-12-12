@@ -8,6 +8,7 @@ end
 
 module ActiveRecord
   class Base
+    ActiveSupport.run_load_hooks(:active_record, self)
   end
 end
 
