@@ -16,12 +16,10 @@ This gem supports the following versions of Ruby and Rails:
 
 ### Usage
 
-1. include `Cacheable::Controller` if your controller does not extend `ActionController::Base`
+1. include the gem in your Gemfile
 
 ```ruby
-class PostsController < ActionController::API
-  include Cacheable::Controller
-end 
+gem 'cacheable'
 ```
 
 2. use `#response_cache` method to any desired controller's action
