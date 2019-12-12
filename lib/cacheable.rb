@@ -46,9 +46,13 @@ module Cacheable
       case data
       when Hash
         return data.inspect unless data.key?(:key)
+
         key = hash_value_str(data[:key])
+
         return key unless data.key?(:version)
+
         version = hash_value_str(data[:version])
+
         return [key, version].join(":")
       when Array
         data.inspect

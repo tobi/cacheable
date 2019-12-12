@@ -30,6 +30,7 @@ module Cacheable
 
     def response_cache(key_data=nil, version_data=nil, &block)
       cacheable_req = cacheable_request?
+
       unless cache_configured? && cacheable_req
         Cacheable.log("Uncacheable request. cache_configured='#{!!cache_configured?}' cacheable_request='#{cacheable_req}' params_cache='#{request.params[:cache] != 'false'}'")
         response.headers['Cache-Control'.freeze] = 'no-cache, no-store'.freeze unless cacheable_req
@@ -50,6 +51,7 @@ module Cacheable
       status, _headers, body = handler.run!
 
       return if request.env['cacheable.miss']
+
       case request.env['cacheable.store']
       when 'server'
         render status: status, plain: body.first

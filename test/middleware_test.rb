@@ -70,7 +70,6 @@ def client_hit_app(env)
 end
 
 class MiddlewareTest < Minitest::Test
-
   def test_cache_miss_and_ignore
     env = Rack::MockRequest.env_for("http://example.com/index.html")
 
@@ -244,5 +243,4 @@ class MiddlewareTest < Minitest::Test
     assert_equal '"abcd"', result[1]['ETag']
     assert_equal "-1", result[1]['Expires']
   end
-
 end

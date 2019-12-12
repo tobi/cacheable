@@ -3,7 +3,6 @@ require File.dirname(__FILE__) + "/test_helper"
 ActionController::Base.cache_store = :memory_store
 
 class ResponseCacheHandlerTest < Minitest::Test
-
   def setup
     @cache_store = stub.tap { |s| s.stubs(read: nil)}
     controller.request.env['HTTP_IF_NONE_MATCH'] = 'deadbeefdeadbeef'
@@ -161,5 +160,4 @@ class ResponseCacheHandlerTest < Minitest::Test
     @controller.response.headers.expects(:[]=).with('Content-Type', content_type)
     @controller.response.headers.expects(:[]=).with('Content-Encoding', "gzip")
   end
-
 end

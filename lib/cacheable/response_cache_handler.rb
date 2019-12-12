@@ -23,7 +23,6 @@ module Cacheable
 
       Cacheable.log cacheable_info_dump
 
-
       try_to_serve_from_cache unless @force_refill_cache
       return @response if defined?(@response)
 
@@ -60,15 +59,18 @@ module Cacheable
         "Raw cacheable.key: #{versioned_key}",
         "cacheable.key: #{versioned_key_hash}",
       ]
+
       if @env['HTTP_IF_NONE_MATCH']
         log_info.push("If-None-Match: #{@env['HTTP_IF_NONE_MATCH']}")
       end
+
       log_info.join(', ')
     end
 
     def try_to_serve_from_cache
       # Etag
       serve_from_browser_cache(versioned_key_hash)
+
       return if defined?(@response)
 
       # Memcached
@@ -77,10 +79,12 @@ module Cacheable
       else
         serve_from_cache(versioned_key_hash)
       end
+
       return if defined?(@response)
 
       # execute if we can get the lock
       execute
+
       return if defined?(@response)
 
       # serve a stale version
@@ -91,6 +95,7 @@ module Cacheable
 
     def execute
       @env['cacheable.locked'] ||= false
+
       if @env['cacheable.locked'] || Cacheable.acquire_lock(versioned_key_hash)
         @env['cacheable.locked'] = true
         @env['cacheable.miss']  = true

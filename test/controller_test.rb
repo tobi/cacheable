@@ -1,7 +1,6 @@
 require File.dirname(__FILE__) + "/test_helper"
 
 class CacheableControllerTest < Minitest::Test
-
   class MockRequest
     def get?; true ;end
     def params; {}; end

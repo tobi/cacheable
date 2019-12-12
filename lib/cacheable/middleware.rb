@@ -14,17 +14,16 @@ module Cacheable
       status, headers, body = @app.call(env)
 
       if env['cacheable.cache']
-
         if [200, 404, 301, 304].include?(status)
           headers['ETag'] = env['cacheable.key']
           headers['X-Alternate-Cache-Key'] = env['cacheable.unversioned-key']
+
           if ie_ajax_request?(env)
             headers["Expires"] = "-1"
           end
         end
 
         if [200, 404, 301].include?(status) && env['cacheable.miss']
-
           # Flatten down the result so that it can be stored to memcached.
           if body.is_a?(String)
             body_string = body
@@ -72,6 +71,7 @@ module Cacheable
     USER_AGENT = "HTTP_USER_AGENT".freeze
     def ie_ajax_request?(env)
       return false unless !env[USER_AGENT].nil? && !env[USER_AGENT].empty?
+
       if env[REQUESTED_WITH] == "XmlHttpRequest".freeze || env[ACCEPT] == "application/json".freeze
         UserAgent.parse(env["HTTP_USER_AGENT"]).is_a?(UserAgent::Browsers::InternetExplorer)
       else
