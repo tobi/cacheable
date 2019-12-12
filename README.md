@@ -9,17 +9,17 @@
 
 ### Usage
 
-1. include ```Cacheable::Controller``` if your controller does not extend ```ActionController::Base```
+1. include `Cacheable::Controller` if your controller does not extend `ActionController::Base`
 
-```
+```ruby
 class PostsController < ActionController::API
   include Cacheable::Controller
 end 
 ```
 
-2. use ```#response_cache``` method to any desired controller's action
+2. use `#response_cache` method to any desired controller's action
 
-```
+```ruby
 class PostsController < ApplicationController
   def show
     response_cache do
@@ -32,7 +32,7 @@ end
 
 3. **(optional)** override custom cache key data. For default, cache key is defined by URL and query string
 
-```
+```ruby
 class PostsController < ApplicationController
   before_action :set_shop
 
