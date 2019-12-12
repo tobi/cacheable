@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.summary     = %q{Simple rails request caching}
   s.description = %q{Simple rails request caching}
 
-  s.files         = Dir["lib/**/*.rb", "README.rdoc", "LICENSE.txt"]
+  s.files         = Dir["lib/**/*.rb", "README.md", "LICENSE.txt"]
   s.require_paths = ["lib"]
 
   s.required_ruby_version = ">= 2.4.0"
