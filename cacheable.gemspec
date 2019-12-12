@@ -12,12 +12,11 @@ Gem::Specification.new do |s|
   s.summary     = %q{Simple rails request caching}
   s.description = %q{Simple rails request caching}
 
-  s.rubyforge_project = "cacheable"
-
-  s.files         = `git ls-files`.split("\n")
-  s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
-  s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
+  s.files         = Dir["lib/**/*.rb", "README.rdoc", "LICENSE.txt"]
   s.require_paths = ["lib"]
+
+  s.add_runtime_dependency "useragent"
+  s.add_runtime_dependency "msgpack"
 
   s.add_development_dependency "minitest", ">= 5.13.0"
   s.add_development_dependency "mocha", ">= 1.10.0"
@@ -26,7 +25,4 @@ Gem::Specification.new do |s|
   s.add_development_dependency "activesupport"
   s.add_development_dependency "actionpack", ">= 4.1"
   s.add_development_dependency "tzinfo-data", ">= 1.2019.3"
-
-  s.add_runtime_dependency "useragent"
-  s.add_runtime_dependency "msgpack"
 end
