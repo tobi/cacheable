@@ -84,9 +84,9 @@ module Cacheable
       return response if response
 
       # execute if we can get the lock
-      execute
+      response = execute
 
-      return if defined?(@response)
+      return response if response
 
       # serve a stale version
       if serving_from_noncurrent_but_recent_version_acceptable?
@@ -102,6 +102,7 @@ module Cacheable
         @env['cacheable.miss'] = true
         Cacheable.log("Refilling cache")
         @response = @cache_miss_block.call
+        @response
       end
     end
 
