@@ -16,13 +16,13 @@ class ResponseCacheHandlerTest < Minitest::Test
 
   def handler
     @handler = Cacheable::ResponseCacheHandler.new(
-      key_data: controller.cache_key_data,
-      version_data: controller.cache_version_data,
+      key_data: controller.send(:cache_key_data),
+      version_data: controller.send(:cache_version_data),
       cache_store: @cache_store,
       env: controller.request.env,
-      force_refill_cache: controller.force_refill_cache?,
-      serve_unversioned: controller.serve_unversioned_cacheable_entry?,
-      cache_age_tolerance: controller.cache_age_tolerance_in_seconds,
+      force_refill_cache: controller.send(:force_refill_cache?),
+      serve_unversioned: controller.send(:serve_unversioned_cacheable_entry?),
+      cache_age_tolerance: controller.send(:cache_age_tolerance_in_seconds),
       headers: controller.response.headers,
       &proc { [200, {}, 'some text'] }
     )
@@ -113,7 +113,7 @@ class ResponseCacheHandlerTest < Minitest::Test
 
   def test_serve_unversioned_cacheable_entry
     controller.request.env['gzip'] = false
-    assert(@controller.respond_to?(:serve_unversioned_cacheable_entry?))
+    assert(@controller.respond_to?(:serve_unversioned_cacheable_entry?, true))
     @controller.expects(:serve_unversioned_cacheable_entry?).returns(true).times(4)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page_serialized)
     expect_page_rendered(page_uncompressed)
