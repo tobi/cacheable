@@ -90,9 +90,9 @@ module Cacheable
 
       # Memcached
       response = if @serve_unversioned
-        serve_from_cache(unversioned_key_hash, nil, "Cache hit: server (unversioned)")
+        serve_from_cache(unversioned_key_hash, "Cache hit: server (unversioned)")
       else
-        serve_from_cache(versioned_key_hash)
+        serve_from_cache(versioned_key_hash, "Cache hit: server")
       end
 
       return response if response
@@ -104,7 +104,7 @@ module Cacheable
 
       # serve a stale version
       if serving_from_noncurrent_but_recent_version_acceptable?
-        serve_from_cache(unversioned_key_hash, @cache_age_tolerance, "Cache hit: server (recent)")
+        serve_from_cache(unversioned_key_hash, "Cache hit: server (recent)", @cache_age_tolerance)
       end
     end
 
@@ -138,7 +138,7 @@ module Cacheable
       end
     end
 
-    def serve_from_cache(cache_key_hash, cache_age_tolerance = nil, message = "Cache hit: server")
+    def serve_from_cache(cache_key_hash, message, cache_age_tolerance = nil)
       raw = @cache_store.read(cache_key_hash)
 
       if raw
