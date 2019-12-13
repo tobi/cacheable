@@ -3,6 +3,10 @@ require 'useragent'
 
 module Cacheable
   class Middleware
+    REQUESTED_WITH = "HTTP_X_REQUESTED_WITH"
+    ACCEPT = "HTTP_ACCEPT"
+    USER_AGENT = "HTTP_USER_AGENT"
+
     def initialize(app)
       @app = app
     end
@@ -65,13 +69,12 @@ module Cacheable
       [status, headers, body]
     end
 
+    private
+
     def timestamp
       Time.now.to_i
     end
 
-    REQUESTED_WITH = "HTTP_X_REQUESTED_WITH"
-    ACCEPT = "HTTP_ACCEPT"
-    USER_AGENT = "HTTP_USER_AGENT"
     def ie_ajax_request?(env)
       return false unless !env[USER_AGENT].nil? && !env[USER_AGENT].empty?
 
