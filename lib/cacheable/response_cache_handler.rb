@@ -70,9 +70,9 @@ module Cacheable
 
     def try_to_serve_from_cache
       # Etag
-      serve_from_browser_cache(versioned_key_hash)
+      response = serve_from_browser_cache(versioned_key_hash)
 
-      return if defined?(@response)
+      return response if response
 
       # Memcached
       if @serve_unversioned
@@ -119,6 +119,7 @@ module Cacheable
 
         Cacheable.log("Cache hit: client")
         @response = [304, @headers, []]
+        @response
       end
     end
 
