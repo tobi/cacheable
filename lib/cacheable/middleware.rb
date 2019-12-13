@@ -1,8 +1,8 @@
+# frozen_string_literal: true
 require 'useragent'
 
 module Cacheable
   class Middleware
-
     def initialize(app)
       @app = app
     end
@@ -28,7 +28,7 @@ module Cacheable
           if body.is_a?(String)
             body_string = body
           else
-            body_string = ""
+            body_string = +""
             body.each { |part| body_string << part }
           end
 
@@ -41,7 +41,10 @@ module Cacheable
           Cacheable.write_to_cache(env['cacheable.key']) do
             payload = MessagePack.dump(cache_data)
             Cacheable.cache_store.write(env['cacheable.key'], payload, raw: true)
-            Cacheable.cache_store.write(env['cacheable.unversioned-key'], payload, raw: true) if env['cacheable.unversioned-key']
+
+            if env['cacheable.unversioned-key']
+              Cacheable.cache_store.write(env['cacheable.unversioned-key'], payload, raw: true)
+            end
           end
 
           # since we had to generate the gz version above already we may
@@ -55,7 +58,7 @@ module Cacheable
         # Add X-Cache header
         miss = env['cacheable.miss']
         x_cache = miss ? 'miss' : 'hit'
-        x_cache << ", #{env['cacheable.store']}" if !miss
+        x_cache += ", #{env['cacheable.store']}" unless miss
         headers['X-Cache'] = x_cache
       end
 
@@ -66,13 +69,13 @@ module Cacheable
       Time.now.to_i
     end
 
-    REQUESTED_WITH = "HTTP_X_REQUESTED_WITH".freeze
-    ACCEPT = "HTTP_ACCEPT".freeze
-    USER_AGENT = "HTTP_USER_AGENT".freeze
+    REQUESTED_WITH = "HTTP_X_REQUESTED_WITH"
+    ACCEPT = "HTTP_ACCEPT"
+    USER_AGENT = "HTTP_USER_AGENT"
     def ie_ajax_request?(env)
       return false unless !env[USER_AGENT].nil? && !env[USER_AGENT].empty?
 
-      if env[REQUESTED_WITH] == "XmlHttpRequest".freeze || env[ACCEPT] == "application/json".freeze
+      if env[REQUESTED_WITH] == "XmlHttpRequest" || env[ACCEPT] == "application/json"
         UserAgent.parse(env["HTTP_USER_AGENT"]).is_a?(UserAgent::Browsers::InternetExplorer)
       else
         false

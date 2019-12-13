@@ -6,9 +6,9 @@ rvm:
   - 2.6.5
 
 gemfile:
-  - gemfiles/actionpack-5-0.gemfile
-  - gemfiles/actionpack-5-1.gemfile
-  - gemfiles/actionpack-5-2.gemfile
+  - gemfiles/actionpack_5_0.gemfile
+  - gemfiles/actionpack_5_1.gemfile
+  - gemfiles/actionpack_5_2.gemfile
   - Gemfile
 
 matrix:

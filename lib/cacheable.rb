@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require 'cacheable/middleware'
 require 'cacheable/railtie' if defined?(Rails)
 require 'cacheable/response_cache_handler'
@@ -5,27 +6,18 @@ require 'msgpack'
 
 module Cacheable
   class << self
-    def cache_store=(cache_store)
-      @cache_store = cache_store
-    end
-
-    def cache_store
-      @cache_store
-    end
+    attr_accessor :cache_store
+    attr_writer :logger
 
     def log(message)
-      @logger.info "[Cacheable] #{message}"
+      @logger.info("[Cacheable] #{message}")
     end
 
-    def logger=(logger)
-      @logger = logger
-    end
-
-    def acquire_lock(cache_key)
+    def acquire_lock(_cache_key)
       raise NotImplementedError, "Override Cacheable.acquire_lock in an initializer."
     end
 
-    def write_to_cache(key)
+    def write_to_cache(_key)
       yield
     end
 
@@ -53,14 +45,14 @@ module Cacheable
 
         version = hash_value_str(data[:version])
 
-        return [key, version].join(":")
+        [key, version].join(":")
       when Array
         data.inspect
       when Time, DateTime
         data.to_i
       when Date
         data.to_time.to_i
-      when true, false, Fixnum, Symbol, String
+      when true, false, Integer, Symbol, String
         data.inspect
       else
         data.to_s.inspect

@@ -1,10 +1,11 @@
+# frozen_string_literal: true
 require File.dirname(__FILE__) + "/test_helper"
 
 ActionController::Base.cache_store = :memory_store
 
 class ResponseCacheHandlerTest < Minitest::Test
   def setup
-    @cache_store = stub.tap { |s| s.stubs(read: nil)}
+    @cache_store = stub.tap { |s| s.stubs(read: nil) }
     controller.request.env['HTTP_IF_NONE_MATCH'] = 'deadbeefdeadbeef'
     Cacheable.stubs(:acquire_lock).returns(true)
   end
@@ -15,14 +16,14 @@ class ResponseCacheHandlerTest < Minitest::Test
 
   def handler
     @handler = Cacheable::ResponseCacheHandler.new(
-      key_data:              controller.cache_key_data,
-      version_data:          controller.cache_version_data,
-      cache_store:           @cache_store,
-      env:                   controller.request.env,
-      force_refill_cache:    controller.force_refill_cache?,
-      serve_unversioned:     controller.serve_unversioned_cacheable_entry?,
-      cache_age_tolerance:   controller.cache_age_tolerance_in_seconds,
-      headers:               controller.response.headers,
+      key_data: controller.cache_key_data,
+      version_data: controller.cache_version_data,
+      cache_store: @cache_store,
+      env: controller.request.env,
+      force_refill_cache: controller.force_refill_cache?,
+      serve_unversioned: controller.serve_unversioned_cacheable_entry?,
+      cache_age_tolerance: controller.cache_age_tolerance_in_seconds,
+      headers: controller.response.headers,
       &proc { [200, {}, 'some text'] }
     )
   end
@@ -41,7 +42,7 @@ class ResponseCacheHandlerTest < Minitest::Test
 
   def test_cache_miss
     _, _, body = handler.run!
-    assert_equal 'some text', body
+    assert_equal('some text', body)
     assert_env(true, nil)
   end
 
@@ -79,7 +80,7 @@ class ResponseCacheHandlerTest < Minitest::Test
   def test_server_recent_cache_acceptable_but_none_found
     @controller.stubs(:cache_age_tolerance_in_seconds).returns(999999999999)
     _, _, body = handler.run!
-    assert_equal 'some text', body
+    assert_equal('some text', body)
     assert_env(true, :anything)
   end
 
@@ -96,7 +97,7 @@ class ResponseCacheHandlerTest < Minitest::Test
     @controller.stubs(:cache_age_tolerance_in_seconds).returns(15)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page_serialized)
     _, _, body = handler.run!
-    assert_equal 'some text', body
+    assert_equal('some text', body)
     assert_env(true, :anything)
   end
 
@@ -107,12 +108,12 @@ class ResponseCacheHandlerTest < Minitest::Test
 
     _, _, body = handler.run!
     assert_env(true, nil)
-    assert_equal 'some text', body
+    assert_equal('some text', body)
   end
 
   def test_serve_unversioned_cacheable_entry
     controller.request.env['gzip'] = false
-    assert @controller.respond_to?(:serve_unversioned_cacheable_entry?)
+    assert(@controller.respond_to?(:serve_unversioned_cacheable_entry?))
     @controller.expects(:serve_unversioned_cacheable_entry?).returns(true).times(4)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page_serialized)
     expect_page_rendered(page_uncompressed)
@@ -133,17 +134,17 @@ class ResponseCacheHandlerTest < Minitest::Test
   def assert_env(miss, store)
     vkh  = handler.versioned_key_hash
     uvkh = handler.unversioned_key_hash
-    assert_equal true,  controller.request.env['cacheable.cache']
-    assert_equal miss,  controller.request.env['cacheable.miss']
+    assert_equal(true,  controller.request.env['cacheable.cache'])
+    assert_equal(miss,  controller.request.env['cacheable.miss'])
 
     if store.nil?
-      assert_nil controller.request.env['cacheable.store']
+      assert_nil(controller.request.env['cacheable.store'])
     elsif store != :anything
-      assert_equal store, controller.request.env['cacheable.store']
+      assert_equal(store, controller.request.env['cacheable.store'])
     end
 
-    assert_equal vkh,   controller.request.env['cacheable.key']
-    assert_equal uvkh,  controller.request.env['cacheable.unversioned-key']
+    assert_equal(vkh,   controller.request.env['cacheable.key'])
+    assert_equal(uvkh,  controller.request.env['cacheable.unversioned-key'])
   end
 
   def expect_page_rendered(page)
