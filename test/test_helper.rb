@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require 'minitest/autorun'
 require 'active_support'
 require 'active_support/cache'
@@ -14,25 +15,40 @@ Cacheable.logger = Class.new { def info(a); end }.new
 class MockController < ActionController::Base
   def self.after_filter(*args); end
 
-  def headers; response.headers; end
+  def headers
+    response.headers
+  end
 
   def params
-    @params ||= {fill_cache: false}
+    @params ||= { fill_cache: false }
   end
 
   def request
     @request ||= Class.new do
-      def url; "http://example.com/"; end
-      def get?; true; end
-      def env; @env ||= {'REQUEST_URI' => '/'}; end
-      def params; {}; end
+      def url
+        "http://example.com/"
+      end
+
+      def get?
+        true
+      end
+
+      def env
+        @env ||= { 'REQUEST_URI' => '/' }
+      end
+
+      def params
+        {}
+      end
     end.new
   end
 
   def response
     @response ||= Class.new do
       attr_accessor :body
-      def headers; @headers ||= { 'Status' => 200, 'Content-Type' => 'text/html' }; end
+      def headers
+        @headers ||= { 'Status' => 200, 'Content-Type' => 'text/html' }
+      end
     end.new
   end
 
@@ -42,7 +58,9 @@ class MockController < ActionController::Base
 
   include Cacheable::Controller
 
-  def cacheable?; true; end
+  def cacheable?
+    true
+  end
 end
 
 class << Cacheable
@@ -59,6 +77,5 @@ class << Cacheable
   prepend(ScrubGzipTimestamp)
 end
 
-$: << File.expand_path('../lib', __FILE__)
+$LOAD_PATH << File.expand_path('../lib', __FILE__)
 require 'cacheable'
-

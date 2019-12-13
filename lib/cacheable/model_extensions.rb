@@ -1,8 +1,9 @@
+# frozen_string_literal: true
 module Cacheable
   module ModelExtensions
     def self.included(base)
       super
-      base.extend ClassMethods
+      base.extend(ClassMethods)
     end
 
     module ClassMethods
