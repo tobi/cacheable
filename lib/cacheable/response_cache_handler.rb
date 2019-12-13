@@ -75,13 +75,13 @@ module Cacheable
       return response if response
 
       # Memcached
-      if @serve_unversioned
+      response = if @serve_unversioned
         serve_from_cache(unversioned_key_hash, nil, "Cache hit: server (unversioned)")
       else
         serve_from_cache(versioned_key_hash)
       end
 
-      return if defined?(@response)
+      return response if response
 
       # execute if we can get the lock
       execute
@@ -136,6 +136,7 @@ module Cacheable
 
         if cache_age_tolerance && page_too_old(timestamp, cache_age_tolerance)
           Cacheable.log("Found an unversioned cache entry, but it was too old (#{timestamp})")
+          nil
         else
           @headers['Content-Type'] = content_type
 
@@ -151,6 +152,7 @@ module Cacheable
 
           Cacheable.log(message)
           @response = [status, @headers, [body]]
+          @response
         end
       end
     end
