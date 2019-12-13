@@ -3,18 +3,28 @@ require 'digest/md5'
 
 module Cacheable
   class ResponseCacheHandler
-    def initialize(**kwargs, &block)
+    def initialize(
+      key_data:,
+      version_data:,
+      env:,
+      cache_age_tolerance:,
+      serve_unversioned:,
+      headers:,
+      force_refill_cache: false,
+      cache_store: Cacheable.cache_store,
+      &block
+    )
       @cache_miss_block = block
 
-      @key_data = kwargs.fetch(:key_data)
-      @version_data = kwargs.fetch(:version_data)
-      @env = kwargs.fetch(:env)
-      @cache_age_tolerance = kwargs.fetch(:cache_age_tolerance)
+      @key_data = key_data
+      @version_data = version_data
+      @env = env
+      @cache_age_tolerance = cache_age_tolerance
 
-      @serve_unversioned = kwargs[:serve_unversioned]
-      @force_refill_cache = kwargs[:force_refill_cache]
-      @cache_store = kwargs[:cache_store] || Cacheable.cache_store
-      @headers = kwargs[:headers] || {}
+      @serve_unversioned = serve_unversioned
+      @force_refill_cache = force_refill_cache
+      @cache_store = cache_store
+      @headers = headers || {}
     end
 
     def run!
