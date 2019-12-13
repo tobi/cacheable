@@ -137,7 +137,7 @@ module Cacheable
 
         status, content_type, body, timestamp, location = hit
 
-        if cache_age_tolerance && page_too_old(timestamp, cache_age_tolerance)
+        if cache_age_tolerance && page_too_old?(timestamp, cache_age_tolerance)
           Cacheable.log("Found an unversioned cache entry, but it was too old (#{timestamp})")
 
           nil
@@ -161,7 +161,7 @@ module Cacheable
       end
     end
 
-    def page_too_old(timestamp, cache_age_tolerance)
+    def page_too_old?(timestamp, cache_age_tolerance)
       !timestamp || timestamp < (Time.now.to_i - cache_age_tolerance)
     end
   end
