@@ -31,6 +31,7 @@ module Cacheable
       # No cache hit; this request cannot be handled from cache.
       # Yield to the controller and mark for writing into cache.
       @env['cacheable.miss'] = true
+
       @cache_miss_block.call
     end
 
@@ -102,8 +103,8 @@ module Cacheable
         @env['cacheable.locked'] = true
         @env['cacheable.miss'] = true
         Cacheable.log("Refilling cache")
-        @response = @cache_miss_block.call
-        @response
+
+        @cache_miss_block.call
       end
     end
 
@@ -120,8 +121,8 @@ module Cacheable
         @headers.delete('Content-Length')
 
         Cacheable.log("Cache hit: client")
-        @response = [304, @headers, []]
-        @response
+
+        [304, @headers, []]
       end
     end
 
@@ -138,6 +139,7 @@ module Cacheable
 
         if cache_age_tolerance && page_too_old(timestamp, cache_age_tolerance)
           Cacheable.log("Found an unversioned cache entry, but it was too old (#{timestamp})")
+
           nil
         else
           @headers['Content-Type'] = content_type
@@ -153,8 +155,8 @@ module Cacheable
           end
 
           Cacheable.log(message)
-          @response = [status, @headers, [body]]
-          @response
+
+          [status, @headers, [body]]
         end
       end
     end
