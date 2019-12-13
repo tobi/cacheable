@@ -26,13 +26,15 @@ module Cacheable
 
       response = try_to_serve_from_cache unless @force_refill_cache
 
-      return response if response
+      if response
+        response
+      else
+        # No cache hit; this request cannot be handled from cache.
+        # Yield to the controller and mark for writing into cache.
+        @env['cacheable.miss'] = true
 
-      # No cache hit; this request cannot be handled from cache.
-      # Yield to the controller and mark for writing into cache.
-      @env['cacheable.miss'] = true
-
-      @cache_miss_block.call
+        @cache_miss_block.call
+      end
     end
 
     def versioned_key_hash
