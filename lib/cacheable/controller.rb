@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 module Cacheable
   module Controller
+    private
+
     # Only get? and head? requests should be cacheable
     def cacheable_request?
       request.get? || request.head? && (request.params[:cache] != 'false')

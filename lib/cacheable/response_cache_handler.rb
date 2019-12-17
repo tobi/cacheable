@@ -3,18 +3,28 @@ require 'digest/md5'
 
 module Cacheable
   class ResponseCacheHandler
-    def initialize(**kwargs, &block)
+    def initialize(
+      key_data:,
+      version_data:,
+      env:,
+      cache_age_tolerance:,
+      serve_unversioned:,
+      headers:,
+      force_refill_cache: false,
+      cache_store: Cacheable.cache_store,
+      &block
+    )
       @cache_miss_block = block
 
-      @key_data = kwargs.fetch(:key_data)
-      @version_data = kwargs.fetch(:version_data)
-      @env = kwargs.fetch(:env)
-      @cache_age_tolerance = kwargs.fetch(:cache_age_tolerance)
+      @key_data = key_data
+      @version_data = version_data
+      @env = env
+      @cache_age_tolerance = cache_age_tolerance
 
-      @serve_unversioned = kwargs[:serve_unversioned]
-      @force_refill_cache = kwargs[:force_refill_cache]
-      @cache_store = kwargs[:cache_store] || Cacheable.cache_store
-      @headers = kwargs[:headers] || {}
+      @serve_unversioned = serve_unversioned
+      @force_refill_cache = force_refill_cache
+      @cache_store = cache_store
+      @headers = headers || {}
     end
 
     def run!
@@ -24,13 +34,17 @@ module Cacheable
 
       Cacheable.log(cacheable_info_dump)
 
-      try_to_serve_from_cache unless @force_refill_cache
-      return @response if defined?(@response)
+      response = try_to_serve_from_cache unless @force_refill_cache
 
-      # No cache hit; this request cannot be handled from cache.
-      # Yield to the controller and mark for writing into cache.
-      @env['cacheable.miss'] = true
-      @cache_miss_block.call
+      if response
+        response
+      else
+        # No cache hit; this request cannot be handled from cache.
+        # Yield to the controller and mark for writing into cache.
+        @env['cacheable.miss'] = true
+
+        @cache_miss_block.call
+      end
     end
 
     def versioned_key_hash
@@ -70,27 +84,27 @@ module Cacheable
 
     def try_to_serve_from_cache
       # Etag
-      serve_from_browser_cache(versioned_key_hash)
+      response = serve_from_browser_cache(versioned_key_hash)
 
-      return if defined?(@response)
+      return response if response
 
       # Memcached
-      if @serve_unversioned
-        serve_from_cache(unversioned_key_hash, nil, "Cache hit: server (unversioned)")
+      response = if @serve_unversioned
+        serve_from_cache(unversioned_key_hash, "Cache hit: server (unversioned)")
       else
-        serve_from_cache(versioned_key_hash)
+        serve_from_cache(versioned_key_hash, "Cache hit: server")
       end
 
-      return if defined?(@response)
+      return response if response
 
       # execute if we can get the lock
-      execute
+      response = execute
 
-      return if defined?(@response)
+      return response if response
 
       # serve a stale version
       if serving_from_noncurrent_but_recent_version_acceptable?
-        serve_from_cache(unversioned_key_hash, @cache_age_tolerance, "Cache hit: server (recent)")
+        serve_from_cache(unversioned_key_hash, "Cache hit: server (recent)", @cache_age_tolerance)
       end
     end
 
@@ -101,7 +115,8 @@ module Cacheable
         @env['cacheable.locked'] = true
         @env['cacheable.miss'] = true
         Cacheable.log("Refilling cache")
-        @response = @cache_miss_block.call
+
+        @cache_miss_block.call
       end
     end
 
@@ -118,11 +133,12 @@ module Cacheable
         @headers.delete('Content-Length')
 
         Cacheable.log("Cache hit: client")
-        @response = [304, @headers, []]
+
+        [304, @headers, []]
       end
     end
 
-    def serve_from_cache(cache_key_hash, cache_age_tolerance = nil, message = "Cache hit: server")
+    def serve_from_cache(cache_key_hash, message, cache_age_tolerance = nil)
       raw = @cache_store.read(cache_key_hash)
 
       if raw
@@ -133,8 +149,10 @@ module Cacheable
 
         status, content_type, body, timestamp, location = hit
 
-        if cache_age_tolerance && page_too_old(timestamp, cache_age_tolerance)
+        if cache_age_tolerance && page_too_old?(timestamp, cache_age_tolerance)
           Cacheable.log("Found an unversioned cache entry, but it was too old (#{timestamp})")
+
+          nil
         else
           @headers['Content-Type'] = content_type
 
@@ -149,12 +167,13 @@ module Cacheable
           end
 
           Cacheable.log(message)
-          @response = [status, @headers, [body]]
+
+          [status, @headers, [body]]
         end
       end
     end
 
-    def page_too_old(timestamp, cache_age_tolerance)
+    def page_too_old?(timestamp, cache_age_tolerance)
       !timestamp || timestamp < (Time.now.to_i - cache_age_tolerance)
     end
   end

@@ -50,7 +50,7 @@ class CacheableControllerTest < Minitest::Test
 
   def test_cache_control_no_store_set_for_uncacheable_requests
     controller.expects(:cacheable_request?).returns(false)
-    controller.response_cache {}
+    controller.send(:response_cache) {}
     assert_equal(controller.response.headers['Cache-Control'], 'no-cache, no-store')
   end
 
@@ -59,7 +59,7 @@ class CacheableControllerTest < Minitest::Test
     @cache_store.expects(:read).returns(page_serialized)
     controller.expects(:render).with(plain: '<body>hi.</body>', status: 200)
 
-    controller.response_cache {}
+    controller.send(:response_cache) {}
   end
 
   def test_client_cache_hit
@@ -67,7 +67,7 @@ class CacheableControllerTest < Minitest::Test
     Cacheable::ResponseCacheHandler.any_instance.expects(:versioned_key_hash).returns('deadbeef').at_least_once
     controller.expects(:head).with(:not_modified)
 
-    controller.response_cache {}
+    controller.send(:response_cache) {}
   end
 
   private
