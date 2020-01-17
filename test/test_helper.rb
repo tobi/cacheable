@@ -49,6 +49,9 @@ class MockController < ActionController::Base
       def headers
         @headers ||= { 'Status' => 200, 'Content-Type' => 'text/html' }
       end
+
+      def reset_body!
+      end
     end.new
   end
 
