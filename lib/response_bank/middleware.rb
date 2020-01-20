@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 require 'useragent'
 
-module Cacheable
+module ResponseBank
   class Middleware
     REQUESTED_WITH = "HTTP_X_REQUESTED_WITH"
     ACCEPT = "HTTP_ACCEPT"
@@ -36,18 +36,18 @@ module Cacheable
             body.each { |part| body_string << part }
           end
 
-          body_gz = Cacheable.compress(body_string)
+          body_gz = ResponseBank.compress(body_string)
 
           # Store result
           cache_data = [status, headers['Content-Type'], body_gz, timestamp]
           cache_data << headers['Location'] if status == 301
 
-          Cacheable.write_to_cache(env['cacheable.key']) do
+          ResponseBank.write_to_cache(env['cacheable.key']) do
             payload = MessagePack.dump(cache_data)
-            Cacheable.cache_store.write(env['cacheable.key'], payload, raw: true)
+            ResponseBank.cache_store.write(env['cacheable.key'], payload, raw: true)
 
             if env['cacheable.unversioned-key']
-              Cacheable.cache_store.write(env['cacheable.unversioned-key'], payload, raw: true)
+              ResponseBank.cache_store.write(env['cacheable.unversioned-key'], payload, raw: true)
             end
           end
 

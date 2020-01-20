@@ -7,7 +7,7 @@ class ResponseCacheHandlerTest < Minitest::Test
   def setup
     @cache_store = stub.tap { |s| s.stubs(read: nil) }
     controller.request.env['HTTP_IF_NONE_MATCH'] = 'deadbeefdeadbeef'
-    Cacheable.stubs(:acquire_lock).returns(true)
+    ResponseBank.stubs(:acquire_lock).returns(true)
   end
 
   def controller
@@ -15,7 +15,7 @@ class ResponseCacheHandlerTest < Minitest::Test
   end
 
   def handler
-    @handler = Cacheable::ResponseCacheHandler.new(
+    @handler = ResponseBank::ResponseCacheHandler.new(
       key_data: controller.send(:cache_key_data),
       version_data: controller.send(:cache_version_data),
       cache_store: @cache_store,
@@ -29,7 +29,7 @@ class ResponseCacheHandlerTest < Minitest::Test
   end
 
   def page
-    [200, "text/html", Cacheable.compress("<body>hi.</body>"), 1331765506]
+    [200, "text/html", ResponseBank.compress("<body>hi.</body>"), 1331765506]
   end
 
   def page_serialized
@@ -42,7 +42,7 @@ class ResponseCacheHandlerTest < Minitest::Test
 
   def test_cache_miss_block_is_only_called_once_if_it_return_nil
     called = 0
-    my_handler = Cacheable::ResponseCacheHandler.new(
+    my_handler = ResponseBank::ResponseCacheHandler.new(
       key_data: controller.send(:cache_key_data),
       version_data: controller.send(:cache_version_data),
       cache_store: @cache_store,
@@ -94,7 +94,7 @@ class ResponseCacheHandlerTest < Minitest::Test
     @controller.stubs(:cache_age_tolerance_in_seconds).returns(999999999999)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page_serialized)
     expect_page_rendered(page_uncompressed)
-    Cacheable.expects(:acquire_lock).with(handler.versioned_key_hash)
+    ResponseBank.expects(:acquire_lock).with(handler.versioned_key_hash)
     handler.run!
     assert_env(false, 'server')
   end
@@ -107,7 +107,7 @@ class ResponseCacheHandlerTest < Minitest::Test
   end
 
   def test_nil_timestamp_in_second_lookup_causes_a_cache_miss
-    Cacheable.stubs(:acquire_lock).returns(false)
+    ResponseBank.stubs(:acquire_lock).returns(false)
     @controller.stubs(:cache_age_tolerance_in_seconds).returns(999999999999)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(MessagePack.dump(page[0..2]))
     handler.run!
@@ -115,7 +115,7 @@ class ResponseCacheHandlerTest < Minitest::Test
   end
 
   def test_recent_cache_available_but_not_acceptable
-    Cacheable.stubs(:acquire_lock).returns(false)
+    ResponseBank.stubs(:acquire_lock).returns(false)
     @controller.stubs(:cache_age_tolerance_in_seconds).returns(15)
     @cache_store.expects(:read).with(handler.unversioned_key_hash).returns(page_serialized)
     _, _, body = handler.run!
@@ -147,7 +147,7 @@ class ResponseCacheHandlerTest < Minitest::Test
     @controller.stubs(:serve_from_browser_cache)
     @controller.stubs(:serve_from_cache)
     @controller.stubs(force_refill_cache?: false)
-    Cacheable.expects(:acquire_lock).once.returns(true)
+    ResponseBank.expects(:acquire_lock).once.returns(true)
 
     handler.run!
     handler.run!
@@ -171,14 +171,14 @@ class ResponseCacheHandlerTest < Minitest::Test
 
   def expect_page_rendered(page)
     _status, content_type, body, _timestamp = page
-    Cacheable.expects(:decompress).returns(body).once
+    ResponseBank.expects(:decompress).returns(body).once
 
     @controller.response.headers.expects(:[]=).with('Content-Type', content_type)
   end
 
   def expect_compressed_page_rendered(page)
     _status, content_type, _body, _timestamp = page
-    Cacheable.expects(:decompress).never
+    ResponseBank.expects(:decompress).never
 
     @controller.response.headers.expects(:[]=).with('Content-Type', content_type)
     @controller.response.headers.expects(:[]=).with('Content-Encoding', "gzip")

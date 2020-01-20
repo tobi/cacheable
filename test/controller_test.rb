@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 require File.dirname(__FILE__) + "/test_helper"
 
-class CacheableControllerTest < Minitest::Test
+class ResponseBankControllerTest < Minitest::Test
   class MockRequest
     def get?
       true
@@ -23,7 +23,7 @@ class CacheableControllerTest < Minitest::Test
   end
 
   class MockController
-    include Cacheable::Controller
+    include ResponseBank::Controller
 
     def cache_configured?
       true
@@ -44,8 +44,8 @@ class CacheableControllerTest < Minitest::Test
 
   def setup
     @cache_store = stub.tap { |s| s.stubs(read: nil) }
-    Cacheable.cache_store = @cache_store
-    Cacheable.stubs(:acquire_lock).returns(true)
+    ResponseBank.cache_store = @cache_store
+    ResponseBank.stubs(:acquire_lock).returns(true)
   end
 
   def test_cache_control_no_store_set_for_uncacheable_requests
@@ -64,7 +64,7 @@ class CacheableControllerTest < Minitest::Test
 
   def test_client_cache_hit
     controller.request.env['HTTP_IF_NONE_MATCH'] = 'deadbeef'
-    Cacheable::ResponseCacheHandler.any_instance.expects(:versioned_key_hash).returns('deadbeef').at_least_once
+    ResponseBank::ResponseCacheHandler.any_instance.expects(:versioned_key_hash).returns('deadbeef').at_least_once
     controller.expects(:head).with(:not_modified)
 
     controller.send(:response_cache) {}
@@ -77,6 +77,6 @@ class CacheableControllerTest < Minitest::Test
   end
 
   def page_serialized
-    MessagePack.dump([200, "text/html", Cacheable.compress("<body>hi.</body>"), 1331765506])
+    MessagePack.dump([200, "text/html", ResponseBank.compress("<body>hi.</body>"), 1331765506])
   end
 end

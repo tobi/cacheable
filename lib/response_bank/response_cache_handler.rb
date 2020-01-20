@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 require 'digest/md5'
 
-module Cacheable
+module ResponseBank
   class ResponseCacheHandler
     def initialize(
       key_data:,
@@ -11,7 +11,7 @@ module Cacheable
       serve_unversioned:,
       headers:,
       force_refill_cache: false,
-      cache_store: Cacheable.cache_store,
+      cache_store: ResponseBank.cache_store,
       &block
     )
       @cache_miss_block = block
@@ -32,7 +32,7 @@ module Cacheable
       @env['cacheable.key']             = versioned_key_hash
       @env['cacheable.unversioned-key'] = unversioned_key_hash
 
-      Cacheable.log(cacheable_info_dump)
+      ResponseBank.log(cacheable_info_dump)
 
       if @force_refill_cache
         refill_cache
@@ -56,11 +56,11 @@ module Cacheable
     end
 
     def versioned_key
-      @versioned_key ||= Cacheable.cache_key_for(key: @key_data, version: @version_data)
+      @versioned_key ||= ResponseBank.cache_key_for(key: @key_data, version: @version_data)
     end
 
     def unversioned_key
-      @unversioned_key ||= Cacheable.cache_key_for(key: @key_data)
+      @unversioned_key ||= ResponseBank.cache_key_for(key: @key_data)
     end
 
     def cacheable_info_dump
@@ -93,7 +93,7 @@ module Cacheable
 
       @env['cacheable.locked'] ||= false
 
-      if @env['cacheable.locked'] || Cacheable.acquire_lock(versioned_key_hash)
+      if @env['cacheable.locked'] || ResponseBank.acquire_lock(versioned_key_hash)
         # execute if we can get the lock
         @env['cacheable.locked'] = true
       elsif serving_from_noncurrent_but_recent_version_acceptable?
@@ -120,7 +120,7 @@ module Cacheable
         @headers.delete('Content-Type')
         @headers.delete('Content-Length')
 
-        Cacheable.log("Cache hit: client")
+        ResponseBank.log("Cache hit: client")
 
         [304, @headers, []]
       end
@@ -138,7 +138,7 @@ module Cacheable
         status, content_type, body, timestamp, location = hit
 
         if cache_age_tolerance && page_too_old?(timestamp, cache_age_tolerance)
-          Cacheable.log("Found an unversioned cache entry, but it was too old (#{timestamp})")
+          ResponseBank.log("Found an unversioned cache entry, but it was too old (#{timestamp})")
 
           nil
         else
@@ -150,11 +150,11 @@ module Cacheable
             @headers['Content-Encoding'] = "gzip"
           else
             # we have to uncompress because the client doesn't support gzip
-            Cacheable.log("uncompressing for client without gzip")
-            body = Cacheable.decompress(body)
+            ResponseBank.log("uncompressing for client without gzip")
+            body = ResponseBank.decompress(body)
           end
 
-          Cacheable.log(message)
+          ResponseBank.log(message)
 
           [status, @headers, [body]]
         end
@@ -168,7 +168,7 @@ module Cacheable
     def refill_cache
       @env['cacheable.miss'] = true
 
-      Cacheable.log("Refilling cache")
+      ResponseBank.log("Refilling cache")
 
       @cache_miss_block.call
     end

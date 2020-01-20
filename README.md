@@ -1,4 +1,4 @@
-# Cacheable [![Build Status](https://secure.travis-ci.org/Shopify/cacheable.png)](http://travis-ci.org/Shopify/cacheable)
+# ResponseBank [![Build Status](https://secure.travis-ci.org/Shopify/response_bank.png)](http://travis-ci.org/Shopify/response_bank)
 
 ### Features
 
@@ -19,7 +19,7 @@ This gem supports the following versions of Ruby and Rails:
 1. include the gem in your Gemfile
 
 ```ruby
-gem 'cacheable'
+gem 'response_bank'
 ```
 
 2. use `#response_cache` method to any desired controller's action
@@ -83,9 +83,9 @@ class PostsController < ApplicationController
   def set_shop
     # @shop = ...
   end
-end 
+end
 ```
 
 ### License
 
-Cacheable is released under the [MIT License](LICENSE.txt).
+ResponseBank is released under the [MIT License](LICENSE.txt).

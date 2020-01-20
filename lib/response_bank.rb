@@ -1,20 +1,20 @@
 # frozen_string_literal: true
-require 'cacheable/middleware'
-require 'cacheable/railtie' if defined?(Rails)
-require 'cacheable/response_cache_handler'
+require 'response_bank/middleware'
+require 'response_bank/railtie' if defined?(Rails)
+require 'response_bank/response_cache_handler'
 require 'msgpack'
 
-module Cacheable
+module ResponseBank
   class << self
     attr_accessor :cache_store
     attr_writer :logger
 
     def log(message)
-      @logger.info("[Cacheable] #{message}")
+      @logger.info("[ResponseBank] #{message}")
     end
 
     def acquire_lock(_cache_key)
-      raise NotImplementedError, "Override Cacheable.acquire_lock in an initializer."
+      raise NotImplementedError, "Override ResponseBank.acquire_lock in an initializer."
     end
 
     def write_to_cache(_key)
