@@ -5,7 +5,7 @@ module Cacheable
 
     # Only get? and head? requests should be cacheable
     def cacheable_request?
-      request.get? || request.head? && (request.params[:cache] != 'false')
+      (request.get? || request.head?) && (request.params[:cache] != 'false')
     end
 
     # Override this method with additional information that changes to invalidate the cache.
