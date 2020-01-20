@@ -49,7 +49,6 @@ module Cacheable
         serve_unversioned: serve_unversioned_cacheable_entry?,
         force_refill_cache: force_refill_cache?,
         headers: response.headers,
-        controller: self,
         &block
       )
 
