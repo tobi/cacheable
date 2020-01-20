@@ -12,7 +12,6 @@ module Cacheable
       headers:,
       force_refill_cache: false,
       cache_store: Cacheable.cache_store,
-      controller:,
       &block
     )
       @cache_miss_block = block
@@ -26,7 +25,6 @@ module Cacheable
       @force_refill_cache = force_refill_cache
       @cache_store = cache_store
       @headers = headers || {}
-      @controller = controller
     end
 
     def run!
@@ -36,15 +34,10 @@ module Cacheable
 
       Cacheable.log(cacheable_info_dump)
 
-      response = try_to_serve_from_cache unless @force_refill_cache
-
-      if response
-        response
+      if @force_refill_cache
+        refill_cache
       else
-        # No cache hit; this request cannot be handled from cache.
-        # Yield to the controller and mark for writing into cache.
-        @env['cacheable.miss'] = true
-        @controller.response_body || @cache_miss_block.call
+        try_to_serve_from_cache
       end
     end
 
@@ -98,27 +91,21 @@ module Cacheable
 
       return response if response
 
-      # execute if we can get the lock
-      response = execute
-
-      return response if response
-
-      # serve a stale version
-      if serving_from_noncurrent_but_recent_version_acceptable?
-        serve_from_cache(unversioned_key_hash, "Cache hit: server (recent)", @cache_age_tolerance)
-      end
-    end
-
-    def execute
       @env['cacheable.locked'] ||= false
 
       if @env['cacheable.locked'] || Cacheable.acquire_lock(versioned_key_hash)
+        # execute if we can get the lock
         @env['cacheable.locked'] = true
-        @env['cacheable.miss'] = true
-        Cacheable.log("Refilling cache")
+      elsif serving_from_noncurrent_but_recent_version_acceptable?
+        # serve a stale version
+        response = serve_from_cache(unversioned_key_hash, "Cache hit: server (recent)", @cache_age_tolerance)
 
-        @cache_miss_block.call
+        return response if response
       end
+
+      # No cache hit; this request cannot be handled from cache.
+      # Yield to the controller and mark for writing into cache.
+      refill_cache
     end
 
     def serving_from_noncurrent_but_recent_version_acceptable?
@@ -176,6 +163,14 @@ module Cacheable
 
     def page_too_old?(timestamp, cache_age_tolerance)
       !timestamp || timestamp < (Time.now.to_i - cache_age_tolerance)
+    end
+
+    def refill_cache
+      @env['cacheable.miss'] = true
+
+      Cacheable.log("Refilling cache")
+
+      @cache_miss_block.call
     end
   end
 end

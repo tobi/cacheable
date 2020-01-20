@@ -24,7 +24,6 @@ class ResponseCacheHandlerTest < Minitest::Test
       serve_unversioned: controller.send(:serve_unversioned_cacheable_entry?),
       cache_age_tolerance: controller.send(:cache_age_tolerance_in_seconds),
       headers: controller.response.headers,
-      controller: controller,
       &proc { [200, {}, 'some text'] }
     )
   end
@@ -41,8 +40,8 @@ class ResponseCacheHandlerTest < Minitest::Test
     [200, "text/html", "<body>hi.</body>", 1331765506]
   end
 
-  def test_cache_miss_missing_cache_nil
-    controller.response_body = "123"
+  def test_cache_miss_block_is_only_called_once_if_it_return_nil
+    called = 0
     my_handler = Cacheable::ResponseCacheHandler.new(
       key_data: controller.send(:cache_key_data),
       version_data: controller.send(:cache_version_data),
@@ -52,12 +51,14 @@ class ResponseCacheHandlerTest < Minitest::Test
       serve_unversioned: controller.send(:serve_unversioned_cacheable_entry?),
       cache_age_tolerance: controller.send(:cache_age_tolerance_in_seconds),
       headers: controller.response.headers,
-      controller: controller,
-      &proc { nil }
+      &->() do
+        called += 1
+        nil
+      end
     )
 
-    body = my_handler.run!
-    assert_equal(['123'], body)
+    my_handler.run!
+    assert_equal(1, called)
     assert_env(true, nil)
   end
 
