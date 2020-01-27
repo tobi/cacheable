@@ -17,7 +17,7 @@ Dummy::Application.initialize!
 
 class RailsIntegrationTest < Minitest::Test
   def test_middleware_is_included
-    assert_includes(Dummy::Application.middleware, Cacheable::Middleware)
+    assert_includes(Dummy::Application.middleware, ResponseBank::Middleware)
   end
 
   def test_active_record_has_a_cache_store
@@ -26,6 +26,6 @@ class RailsIntegrationTest < Minitest::Test
   end
 
   def test_action_controller_includes_cacheable
-    assert_includes(ActionController::Base, Cacheable::Controller)
+    assert_includes(ActionController::Base, ResponseBank::Controller)
   end
 end

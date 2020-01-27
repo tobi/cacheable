@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    cacheable (2.0.0)
+    response_bank (1.0.0)
       msgpack
       useragent
 
@@ -156,11 +156,11 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  cacheable!
   minitest (>= 5.13.0)
   mocha (>= 1.10.0)
   rails (~> 6.0.0)
   rake
+  response_bank!
   rubocop (= 0.78.0)
   tzinfo-data (>= 1.2019.3)
 

@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-module Cacheable
+module ResponseBank
   module ModelExtensions
     def self.included(base)
       super

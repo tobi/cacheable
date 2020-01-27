@@ -8,9 +8,9 @@ require 'rails'
 require 'action_controller/railtie'
 require 'mocha/minitest'
 
-require 'cacheable'
+require 'response_bank'
 
-Cacheable.logger = Class.new { def info(a); end }.new
+ResponseBank.logger = Class.new { def info(a); end }.new
 
 class MockController < ActionController::Base
   def self.after_filter(*args); end
@@ -56,17 +56,17 @@ class MockController < ActionController::Base
   end
 
   def logger
-    Cacheable.logger
+    ResponseBank.logger
   end
 
-  include Cacheable::Controller
+  include ResponseBank::Controller
 
   def cacheable?
     true
   end
 end
 
-class << Cacheable
+class << ResponseBank
   module ScrubGzipTimestamp
     def compress(*)
       gzip_content = super
@@ -81,4 +81,4 @@ class << Cacheable
 end
 
 $LOAD_PATH << File.expand_path('../lib', __FILE__)
-require 'cacheable'
+require 'response_bank'

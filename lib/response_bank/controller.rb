@@ -1,9 +1,9 @@
 # frozen_string_literal: true
-module Cacheable
+module ResponseBank
   module Controller
     private
 
-    # Only get? and head? requests should be cacheable
+    # Only get? and head? requests should be cached.
     def cacheable_request?
       (request.get? || request.head?) && (request.params[:cache] != 'false')
     end
@@ -35,13 +35,13 @@ module Cacheable
       cacheable_req = cacheable_request?
 
       unless cache_configured? && cacheable_req
-        Cacheable.log("Uncacheable request. cache_configured='#{!!cache_configured?}'" \
+        ResponseBank.log("Uncacheable request. cache_configured='#{!!cache_configured?}'" \
             " cacheable_request='#{cacheable_req}' params_cache='#{request.params[:cache] != 'false'}'")
         response.headers['Cache-Control'] = 'no-cache, no-store' unless cacheable_req
         return yield
       end
 
-      handler = Cacheable::ResponseCacheHandler.new(
+      handler = ResponseBank::ResponseCacheHandler.new(
         key_data: key_data || cache_key_data,
         version_data: version_data || cache_version_data,
         env: request.env,

@@ -1,19 +1,19 @@
 # frozen_string_literal: true
 require 'rails'
-require 'cacheable/controller'
-require 'cacheable/model_extensions'
+require 'response_bank/controller'
+require 'response_bank/model_extensions'
 
-module Cacheable
+module ResponseBank
   class Railtie < ::Rails::Railtie
     initializer "cachable.configure_active_record" do |config|
-      config.middleware.insert_after(Rack::Head, Cacheable::Middleware)
+      config.middleware.insert_after(Rack::Head, ResponseBank::Middleware)
 
       ActiveSupport.on_load(:action_controller) do
-        include Cacheable::Controller
+        include ResponseBank::Controller
       end
 
       ActiveSupport.on_load(:active_record) do
-        include Cacheable::ModelExtensions
+        include ResponseBank::ModelExtensions
       end
     end
   end

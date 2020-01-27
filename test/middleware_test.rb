@@ -8,7 +8,7 @@ module EmptyLogger
 end
 Rails.singleton_class.prepend(EmptyLogger)
 
-Cacheable.cache_store = ActiveSupport::Cache.lookup_store(:memory_store)
+ResponseBank.cache_store = ActiveSupport::Cache.lookup_store(:memory_store)
 
 def app(_env)
   body = block_given? ? [yield] : ['Hi']
@@ -74,29 +74,29 @@ class MiddlewareTest < Minitest::Test
   def test_cache_miss_and_ignore
     env = Rack::MockRequest.env_for("http://example.com/index.html")
 
-    ware = Cacheable::Middleware.new(method(:app))
+    ware = ResponseBank::Middleware.new(method(:app))
     result = ware.call(env)
 
     assert_nil(result[1]['ETag'])
   end
 
   def test_cache_miss_and_not_found
-    Cacheable.cache_store.expects(:write).once
+    ResponseBank.cache_store.expects(:write).once
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
 
-    ware = Cacheable::Middleware.new(method(:not_found))
+    ware = ResponseBank::Middleware.new(method(:not_found))
     result = ware.call(env)
 
     assert_equal('"abcd"', result[1]['ETag'])
   end
 
   def test_cache_hit_and_moved
-    Cacheable.cache_store.expects(:write).never
+    ResponseBank.cache_store.expects(:write).never
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
 
-    ware = Cacheable::Middleware.new(method(:cached_moved))
+    ware = ResponseBank::Middleware.new(method(:cached_moved))
     result = ware.call(env)
 
     assert_equal('"abcd"', result[1]['ETag'])
@@ -104,10 +104,10 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_miss_and_moved
-    Cacheable.cache_store.expects(:write).once
+    ResponseBank.cache_store.expects(:write).once
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
-    ware = Cacheable::Middleware.new(method(:moved))
+    ware = ResponseBank::Middleware.new(method(:moved))
     result = ware.call(env)
 
     assert_equal('"abcd"', result[1]['ETag'])
@@ -115,16 +115,16 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_miss_and_store
-    Cacheable::Middleware.any_instance.stubs(timestamp: 424242)
-    Cacheable.cache_store.expects(:write).with(
+    ResponseBank::Middleware.any_instance.stubs(timestamp: 424242)
+    ResponseBank.cache_store.expects(:write).with(
       '"abcd"',
-        MessagePack.dump([200, 'text/plain', Cacheable.compress('Hi'), 424242]),
+        MessagePack.dump([200, 'text/plain', ResponseBank.compress('Hi'), 424242]),
         raw: true
     ).once
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
 
-    ware = Cacheable::Middleware.new(method(:cacheable_app))
+    ware = ResponseBank::Middleware.new(method(:cacheable_app))
     result = ware.call(env)
 
     assert(env['cacheable.cache'])
@@ -139,16 +139,16 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_miss_and_store_on_moved
-    Cacheable::Middleware.any_instance.stubs(timestamp: 424242)
-    Cacheable.cache_store.expects(:write).with(
+    ResponseBank::Middleware.any_instance.stubs(timestamp: 424242)
+    ResponseBank.cache_store.expects(:write).with(
       '"abcd"',
-        MessagePack.dump([301, 'text/plain', Cacheable.compress(''), 424242, 'http://shopify.com']),
+        MessagePack.dump([301, 'text/plain', ResponseBank.compress(''), 424242, 'http://shopify.com']),
         raw: true
     ).once
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
 
-    ware = Cacheable::Middleware.new(method(:moved))
+    ware = ResponseBank::Middleware.new(method(:moved))
     result = ware.call(env)
 
     assert(env['cacheable.cache'])
@@ -163,17 +163,17 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_miss_and_store_with_gzip_support
-    Cacheable::Middleware.any_instance.stubs(timestamp: 424242)
-    Cacheable.cache_store.expects(:write).with(
+    ResponseBank::Middleware.any_instance.stubs(timestamp: 424242)
+    ResponseBank.cache_store.expects(:write).with(
       '"abcd"',
-        MessagePack.dump([200, 'text/plain', Cacheable.compress('Hi'), 424242]),
+        MessagePack.dump([200, 'text/plain', ResponseBank.compress('Hi'), 424242]),
         raw: true
     ).once
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
     env['HTTP_ACCEPT_ENCODING'] = 'deflate, gzip'
 
-    ware = Cacheable::Middleware.new(method(:cacheable_app))
+    ware = ResponseBank::Middleware.new(method(:cacheable_app))
     result = ware.call(env)
 
     assert(env['cacheable.cache'])
@@ -185,15 +185,15 @@ class MiddlewareTest < Minitest::Test
 
     # gzip support!
     assert_equal('gzip', result[1]['Content-Encoding'])
-    assert_equal([Cacheable.compress("Hi")], result[2])
+    assert_equal([ResponseBank.compress("Hi")], result[2])
   end
 
   def test_cache_hit_server
-    Cacheable.cache_store.expects(:write).times(0)
+    ResponseBank.cache_store.expects(:write).times(0)
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
 
-    ware = Cacheable::Middleware.new(method(:already_cached_app))
+    ware = ResponseBank::Middleware.new(method(:already_cached_app))
     result = ware.call(env)
 
     assert(env['cacheable.cache'])
@@ -203,11 +203,11 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_hit_client
-    Cacheable.cache_store.expects(:write).times(0)
+    ResponseBank.cache_store.expects(:write).times(0)
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
 
-    ware = Cacheable::Middleware.new(method(:client_hit_app))
+    ware = ResponseBank::Middleware.new(method(:client_hit_app))
     result = ware.call(env)
 
     assert(env['cacheable.cache'])
@@ -217,7 +217,7 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_ie_ajax
-    ware = Cacheable::Middleware.new(method(:already_cached_app))
+    ware = ResponseBank::Middleware.new(method(:already_cached_app))
     env = Rack::MockRequest.env_for("http://example.com/index.html")
 
     assert(!ware.send(:ie_ajax_request?, env))
@@ -241,13 +241,13 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_hit_server_with_ie_ajax
-    Cacheable.cache_store.expects(:write).times(0)
+    ResponseBank.cache_store.expects(:write).times(0)
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
     env["HTTP_USER_AGENT"] = "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)"
     env["HTTP_X_REQUESTED_WITH"] = "XmlHttpRequest"
 
-    ware = Cacheable::Middleware.new(method(:already_cached_app))
+    ware = ResponseBank::Middleware.new(method(:already_cached_app))
     result = ware.call(env)
 
     assert(env['cacheable.cache'])
