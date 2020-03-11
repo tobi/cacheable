@@ -127,7 +127,7 @@ module ResponseBank
     end
 
     def serve_from_cache(cache_key_hash, message, cache_age_tolerance = nil)
-      raw = ResponseBank.read_from_backing_cache_store(@env, cache_key_hash, cache_store: @cache_store)
+      raw = ResponseBank.read_from_backing_cache_store(@env, cache_key_hash, backing_cache_store: @cache_store)
 
       if raw
         hit = MessagePack.load(raw)
