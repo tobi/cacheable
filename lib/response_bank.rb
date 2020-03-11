@@ -21,6 +21,14 @@ module ResponseBank
       yield
     end
 
+    def write_to_backing_cache_store(_env, key, payload, raw:)
+      cache_store.write(key, payload, raw: raw)
+    end
+
+    def read_from_backing_cache_store(_env, cache_key, cache_store: cache_store)
+      cache_store.read(cache_key)
+    end
+
     def compress(content)
       io = StringIO.new
       gz = Zlib::GzipWriter.new(io)
