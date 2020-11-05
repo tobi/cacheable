@@ -44,7 +44,13 @@ module ResponseBank
 
           ResponseBank.write_to_cache(env['cacheable.key']) do
             payload = MessagePack.dump(cache_data)
-            ResponseBank.write_to_backing_cache_store(env, env['cacheable.key'], payload, raw: true)
+            ResponseBank.write_to_backing_cache_store(
+              env,
+              env['cacheable.key'],
+              payload,
+              raw: true,
+              expires_in: env['cacheable.versioned-cache-expiry'],
+            )
 
             if env['cacheable.unversioned-key']
               ResponseBank.write_to_backing_cache_store(env, env['cacheable.unversioned-key'], payload, raw: true)
