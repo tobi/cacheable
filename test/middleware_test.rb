@@ -50,6 +50,16 @@ def cacheable_app(env)
   [200, { 'Content-Type' => 'text/plain' }, body]
 end
 
+def cacheable_app_with_unversioned(env)
+  env['cacheable.cache']           = true
+  env['cacheable.miss']            = true
+  env['cacheable.key']             = '"abcd"'
+  env['cacheable.unversioned-key'] = '"abcd-unversioned"'
+
+  body = block_given? ? [yield] : ['Hi']
+  [200, { 'Content-Type' => 'text/plain' }, body]
+end
+
 def already_cached_app(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = false
@@ -119,7 +129,8 @@ class MiddlewareTest < Minitest::Test
     ResponseBank.cache_store.expects(:write).with(
       '"abcd"',
         MessagePack.dump([200, 'text/plain', ResponseBank.compress('Hi'), 424242]),
-        raw: true
+        raw: true,
+        expires_in: nil,
     ).once
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
@@ -138,12 +149,24 @@ class MiddlewareTest < Minitest::Test
     assert(!result[1]['Content-Encoding'])
   end
 
+  def test_cache_miss_and_store_with_shortened_cache_expiry
+    env = Rack::MockRequest.env_for("http://example.com/index.html")
+    env['cacheable.versioned-cache-expiry'] = 30.seconds
+
+    ResponseBank.cache_store.expects(:write).with('"abcd"', anything, has_entries(expires_in: 30.seconds))
+    ResponseBank.cache_store.expects(:write).with('"abcd-unversioned"', anything, has_entries(expires_in: nil))
+
+    ware = ResponseBank::Middleware.new(method(:cacheable_app_with_unversioned))
+    result = ware.call(env)
+  end
+
   def test_cache_miss_and_store_on_moved
     ResponseBank::Middleware.any_instance.stubs(timestamp: 424242)
     ResponseBank.cache_store.expects(:write).with(
       '"abcd"',
         MessagePack.dump([301, 'text/plain', ResponseBank.compress(''), 424242, 'http://shopify.com']),
-        raw: true
+        raw: true,
+        expires_in: nil,
     ).once
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
@@ -167,7 +190,8 @@ class MiddlewareTest < Minitest::Test
     ResponseBank.cache_store.expects(:write).with(
       '"abcd"',
         MessagePack.dump([200, 'text/plain', ResponseBank.compress('Hi'), 424242]),
-        raw: true
+        raw: true,
+        expires_in: nil,
     ).once
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")

@@ -21,8 +21,8 @@ module ResponseBank
       yield
     end
 
-    def write_to_backing_cache_store(_env, key, payload, raw:)
-      cache_store.write(key, payload, raw: raw)
+    def write_to_backing_cache_store(_env, key, payload, raw:, expires_in: nil)
+      cache_store.write(key, payload, raw: raw, expires_in: expires_in)
     end
 
     def read_from_backing_cache_store(_env, cache_key, backing_cache_store: cache_store)
