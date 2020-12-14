@@ -22,7 +22,42 @@ This gem supports the following versions of Ruby and Rails:
 gem 'response_bank'
 ```
 
-2. use `#response_cache` method to any desired controller's action
+2. add an initializer file. We need to configure the `acquire_lock` method, set the cache store and the logger
+
+```ruby
+require 'response_bank'
+
+module ResponseBank
+  LOCK_TTL = 90
+
+  class << self
+    def acquire_lock(cache_key)
+      cache_store.write("#{cache_key}:lock", '1', unless_exist: true, expires_in: LOCK_TTL, raw: true)
+    end
+
+    def release_lock(cache_key)
+      cache_store.delete("#{cache_key}:lock")
+    end
+
+    def write_to_cache(cache_key)
+      yield
+    ensure
+      release_lock(cache_key)
+    end
+  end
+end
+
+ResponseBank.cache_store = ActiveSupport::Cache.lookup_store(Rails.configuration.cache_store)
+ResponseBank.logger = Rails.logger
+
+```
+
+3. enables caching on your application
+```ruby
+config.action_controller.perform_caching = true
+```
+
+4. use `#response_cache` method to any desired controller's action
 
 ```ruby
 class PostsController < ApplicationController
@@ -35,7 +70,15 @@ class PostsController < ApplicationController
 end
 ```
 
-3. **(optional)** override custom cache key data. For default, cache key is defined by URL and query string
+5. **(optional)** set a custom TTL for the cache by overriding the `write_to_backing_cache_store` method in your initializer file
+```ruby
+CACHE_TTL = 30.minutes
+def write_to_backing_cache_store(_env, key, payload, raw:, expires_in: CACHE_TTL)
+  cache_store.write(key, payload, raw: raw, expires_in: expires_in)
+end
+```
+
+6. **(optional)** override custom cache key data. For default, cache key is defined by URL and query string
 
 ```ruby
 class PostsController < ApplicationController
