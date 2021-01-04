@@ -62,9 +62,11 @@ end
 
 5. **(optional)** set a custom TTL for the cache by overriding the `write_to_backing_cache_store` method in your initializer file
 ```ruby
-CACHE_TTL = 30.minutes
-def write_to_backing_cache_store(_env, key, payload, raw:, expires_in: CACHE_TTL)
-  cache_store.write(key, payload, raw: raw, expires_in: expires_in)
+module ResponseBank
+  CACHE_TTL = 30.minutes
+  def write_to_backing_cache_store(_env, key, payload, raw:, expires_in: CACHE_TTL)
+    cache_store.write(key, payload, raw: raw, expires_in: expires_in)
+  end
 end
 ```
 
