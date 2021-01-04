@@ -34,16 +34,6 @@ module ResponseBank
     def acquire_lock(cache_key)
       cache_store.write("#{cache_key}:lock", '1', unless_exist: true, expires_in: LOCK_TTL, raw: true)
     end
-
-    def release_lock(cache_key)
-      cache_store.delete("#{cache_key}:lock")
-    end
-
-    def write_to_cache(cache_key)
-      yield
-    ensure
-      release_lock(cache_key)
-    end
   end
 end
 
