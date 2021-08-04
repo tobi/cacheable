@@ -17,6 +17,8 @@ Gem::Specification.new do |s|
 
   s.required_ruby_version = ">= 2.4.0"
 
+  s.metadata["allowed_push_host"] = "https://rubygems.org"
+
   s.add_runtime_dependency("useragent")
   s.add_runtime_dependency("msgpack")
 
