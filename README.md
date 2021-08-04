@@ -64,8 +64,8 @@ end
 ```ruby
 module ResponseBank
   CACHE_TTL = 30.minutes
-  def write_to_backing_cache_store(_env, key, payload, raw:, expires_in: CACHE_TTL)
-    cache_store.write(key, payload, raw: raw, expires_in: expires_in)
+  def write_to_backing_cache_store(_env, key, payload, expires_in: CACHE_TTL)
+    cache_store.write(key, payload, raw: true, expires_in: expires_in)
   end
 end
 ```
