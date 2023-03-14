@@ -29,17 +29,30 @@ module ResponseBank
       backing_cache_store.read(cache_key, raw: true)
     end
 
-    def compress(content)
-      io = StringIO.new
-      gz = Zlib::GzipWriter.new(io)
-      gz.write(content)
-      io.string
-    ensure
-      gz.close
+    def compress(content, encoding: 'gzip')
+      case encoding
+      when 'gzip'
+        io = StringIO.new
+        gz = Zlib::GzipWriter.new(io)
+        gz.write(content)
+        gz.close
+        io.string
+      when 'br'
+        Brotli.deflate(string)
+      else
+        raise ArgumentError, "Unsupported encoding: #{encoding}"
+      end
     end
 
-    def decompress(content)
-      Zlib::GzipReader.new(StringIO.new(content)).read
+    def decompress(content, encoding: 'gzip')
+      case encoding
+      when 'gzip'
+        Zlib::GzipReader.new(StringIO.new(content)).read
+      when 'br'
+        Brotli.inflate(content)
+      else
+        raise ArgumentError, "Unsupported encoding: #{encoding}"
+      end
     end
 
     def cache_key_for(data)

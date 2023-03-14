@@ -6,3 +6,4 @@ gemspec
 
 gem 'rails', '~> 6.0.0'
 gem 'rubocop', '0.78.0', require: false
+gem 'brotli'

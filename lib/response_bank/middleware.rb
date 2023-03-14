@@ -14,6 +14,8 @@ module ResponseBank
     def call(env)
       env['cacheable.cache'] = false
       gzip = env['gzip'] = env['HTTP_ACCEPT_ENCODING'].to_s.include?("gzip")
+      br = env['br'] = env['HTTP_ACCEPT_ENCODING'].to_s.include?("br")
+      br_default = env['br_default']
 
       status, headers, body = @app.call(env)
 
@@ -36,7 +38,15 @@ module ResponseBank
             body.each { |part| body_string << part }
           end
 
-          body_gz = ResponseBank.compress(body_string)
+          if br && br_default
+            compressed = ResponseBank.compress(body_string, :br)
+            headers['Content-Encoding'] = "br"
+            body = [compressed]
+          else
+            compressed = ResponseBank.compress(body_string)
+            headers['Content-Encoding'] = "gzip"
+            body = [compressed]
+          end
 
           # Store result
           cache_data = [status, headers['Content-Type'], body_gz, timestamp]
@@ -54,13 +64,6 @@ module ResponseBank
             if env['cacheable.unversioned-key']
               ResponseBank.write_to_backing_cache_store(env, env['cacheable.unversioned-key'], payload)
             end
-          end
-
-          # since we had to generate the gz version above already we may
-          # as well serve it if the client wants it
-          if gzip
-            headers['Content-Encoding'] = "gzip"
-            body = [body_gz]
           end
         end
 
