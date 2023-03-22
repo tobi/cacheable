@@ -113,7 +113,12 @@ module ResponseBank
     end
 
     def serve_from_browser_cache(cache_key_hash)
-      if @env["HTTP_IF_NONE_MATCH"] == cache_key_hash
+      # Support for Etag variations including:
+      # If-None-Match: abc
+      # If-None-Match: "abc"
+      # If-None-Match: W/"abc"
+      # If-None-Match: "abc", "def"
+      if !@env["HTTP_IF_NONE_MATCH"].nil? && @env["HTTP_IF_NONE_MATCH"].include?(cache_key_hash)
         @env['cacheable.miss']  = false
         @env['cacheable.store'] = 'client'
 
