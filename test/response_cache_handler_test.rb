@@ -80,10 +80,22 @@ class ResponseCacheHandlerTest < Minitest::Test
     assert_env(false, 'client')
   end
 
+  def test_client_cache_hit_multi
+    controller.request.env['HTTP_IF_NONE_MATCH'] = "foo, \"#{handler.versioned_key_hash}\", bar"
+    handler.run!
+    assert_env(false, 'client')
+  end
+
   def test_client_cache_hit_weak
     controller.request.env['HTTP_IF_NONE_MATCH'] = "W/\"#{handler.versioned_key_hash}\""
     handler.run!
     assert_env(false, 'client')
+  end
+
+  def test_client_cache_miss_partial
+    controller.request.env['HTTP_IF_NONE_MATCH'] = "aaa#{handler.versioned_key_hash}zzz"
+    handler.run!
+    assert_env(true, nil)
   end
 
   def test_server_cache_hit
