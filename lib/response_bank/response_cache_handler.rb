@@ -118,16 +118,24 @@ module ResponseBank
       # If-None-Match: "abc"
       # If-None-Match: W/"abc"
       # If-None-Match: "abc", "def"
-      if !@env["HTTP_IF_NONE_MATCH"].nil? && @env["HTTP_IF_NONE_MATCH"].include?(cache_key_hash)
-        @env['cacheable.miss']  = false
-        @env['cacheable.store'] = 'client'
+      if (if_none_match = @env["HTTP_IF_NONE_MATCH"])
+        etags = if_none_match.split(",")
+        etags.each do |tag|
+          tag.sub!(/\"?\s*\z/, "")
+          tag.sub!(/\A\s*(W\/)?\"?/, "")
+        end
 
-        @headers.delete('Content-Type')
-        @headers.delete('Content-Length')
+        if etags.include?(cache_key_hash)
+          @env['cacheable.miss']  = false
+          @env['cacheable.store'] = 'client'
 
-        ResponseBank.log("Cache hit: client")
+          @headers.delete('Content-Type')
+          @headers.delete('Content-Length')
 
-        [304, @headers, []]
+          ResponseBank.log("Cache hit: client")
+
+          [304, @headers, []]
+        end
       end
     end
 
