@@ -29,8 +29,8 @@ module ResponseBank
 
     def run!
       @env['cacheable.cache']           = true
-      @env['cacheable.key']             = versioned_key_hash
-      @env['cacheable.unversioned-key'] = unversioned_key_hash
+      @env['cacheable.key']             = entity_tag_hash
+      @env['cacheable.unversioned-key'] = cache_key_hash
 
       ResponseBank.log(cacheable_info_dump)
 
@@ -41,32 +41,32 @@ module ResponseBank
       end
     end
 
-    def versioned_key_hash
-      @versioned_key_hash ||= key_hash(versioned_key)
+    def entity_tag_hash
+      @entity_tag_hash ||= hash(entity_tag)
     end
 
-    def unversioned_key_hash
-      @unversioned_key_hash ||= key_hash(unversioned_key)
+    def cache_key_hash
+      @cache_key_hash ||= hash(cache_key)
     end
 
     private
 
-    def key_hash(key)
+    def hash(key)
       "cacheable:#{Digest::MD5.hexdigest(key)}"
     end
 
-    def versioned_key
-      @versioned_key ||= ResponseBank.cache_key_for(key: @key_data, version: @version_data)
+    def entity_tag
+      @entity_tag ||= ResponseBank.cache_key_for(key: @key_data, version: @version_data)
     end
 
-    def unversioned_key
-      @unversioned_key ||= ResponseBank.cache_key_for(key: @key_data)
+    def cache_key
+      @cache_key ||= ResponseBank.cache_key_for(key: @key_data)
     end
 
     def cacheable_info_dump
       log_info = [
-        "Raw cacheable.key: #{versioned_key}",
-        "cacheable.key: #{versioned_key_hash}",
+        "Raw cacheable.key: #{entity_tag}",
+        "cacheable.key: #{entity_tag_hash}",
       ]
 
       if @env['HTTP_IF_NONE_MATCH']
@@ -78,13 +78,14 @@ module ResponseBank
 
     def try_to_serve_from_cache
       # Etag
-      response = serve_from_browser_cache(versioned_key_hash)
+      response = serve_from_browser_cache(entity_tag_hash, @env['HTTP_IF_NONE_MATCH'])
       return response if response
 
-      response = serve_from_cache(unversioned_key_hash, versioned_key_hash, @cache_age_tolerance)
+      response = serve_from_cache(cache_key_hash, entity_tag_hash, @cache_age_tolerance)
       return response if response
 
-      ResponseBank.acquire_lock(versioned_key_hash) unless @env['cacheable.locked']
+      # non cache hits do not yet have the lock
+      ResponseBank.acquire_lock(entity_tag_hash) unless @env['cacheable.locked']
 
       # No cache hit; this request cannot be handled from cache.
       # Yield to the controller and mark for writing into cache.
@@ -95,13 +96,8 @@ module ResponseBank
       @cache_age_tolerance > 0
     end
 
-    def serve_from_browser_cache(cache_key_hash)
-      # Support for Etag variations including:
-      # If-None-Match: abc
-      # If-None-Match: "abc"
-      # If-None-Match: W/"abc"
-      # If-None-Match: "abc", "def"
-      if !@env["HTTP_IF_NONE_MATCH"].nil? && @env["HTTP_IF_NONE_MATCH"].include?(cache_key_hash)
+    def serve_from_browser_cache(entity_tag, if_none_match)
+      if etag_matches?(entity_tag, if_none_match)
         @env['cacheable.miss']  = false
         @env['cacheable.store'] = 'client'
 
@@ -130,25 +126,27 @@ module ResponseBank
         headers['Location'] = location if location
 
         @env['cacheable.locked'] ||= false
+
+        # to preserve the unversioned/versioned logging messages from past releases we split the match_entity_tag test
         if match_entity_tag == "*"
           ResponseBank.log("Cache hit: server (unversioned)")
           # page tolerance only applies for versioned + etag mismatch
-        elsif headers['ETag'] == match_entity_tag
+        elsif etag_matches?(headers['ETag'], match_entity_tag)
           ResponseBank.log("Cache hit: server")
         else
-          # cache miss
+          # cache miss; check to see if any parallel requests already are regenerating the cache
           if ResponseBank.acquire_lock(match_entity_tag)
             # execute if we can get the lock
             @env['cacheable.locked'] = true
             return nil
           elsif stale_while_revalidate?(timestamp, cache_age_tolerance)
+            # cache is being regenerated, can we avoid piling on and use a stale version in the interim?
             ResponseBank.log("Cache hit: server (recent)")
           else
             ResponseBank.log("Found an unversioned cache entry, but it was too old (#{timestamp})")
             return nil
           end
         end
-
 
         # version check
         # unversioned but tolerance threshold
@@ -166,6 +164,18 @@ module ResponseBank
 
         [status, @headers, [body]]
       end
+    end
+
+    def etag_matches?(entity_tag, if_none_match)
+      # Support for Etag variations including:
+      # If-None-Match: abc
+      # If-None-Match: "abc"
+      # If-None-Match: W/"abc"
+      # If-None-Match: "abc", "def"
+      # If-None-Match: "*"
+      return false unless entity_tag
+      return false unless if_none_match
+      if_none_match == "*" || if_none_match.include?(entity_tag)
     end
 
     def stale_while_revalidate?(timestamp, cache_age_tolerance)

@@ -3,6 +3,10 @@ require 'useragent'
 
 module ResponseBank
   class Middleware
+    # Limit the cached headers
+    # TODO: Make this lowercase/case-insentitive as per rfc2616 §4.2
+    CACHEABLE_HEADERS = ["Location", "Content-Type", "ETag", "Last-Modified", "Cache-Control", "Expires", "Surrogate-Keys", "Cache-Tags"].freeze
+
     REQUESTED_WITH = "HTTP_X_REQUESTED_WITH"
     ACCEPT = "HTTP_ACCEPT"
     USER_AGENT = "HTTP_USER_AGENT"
@@ -37,8 +41,9 @@ module ResponseBank
 
           body_gz = ResponseBank.compress(body_string)
 
+          cached_headers = headers.slice(*CACHEABLE_HEADERS)
           # Store result
-          cache_data = [status, headers, body_gz, timestamp]
+          cache_data = [status, cached_headers, body_gz, timestamp]
 
           ResponseBank.write_to_cache(env['cacheable.key']) do
             payload = MessagePack.dump(cache_data)

@@ -16,8 +16,8 @@ end
 def not_found(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = true
-  env['cacheable.key']   = '"abcd"'
-  env['cacheable.unversioned-key'] = '"not_found-unversioned"'
+  env['cacheable.key']   = '"etag_value"'
+  env['cacheable.unversioned-key'] = '"not_found_cache_key"'
 
   body = block_given? ? [yield] : ['Hi']
   [404, { 'Content-Type' => 'text/plain' }, body]
@@ -26,8 +26,8 @@ end
 def cached_moved(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = false
-  env['cacheable.key']   = '"abcd"'
-  env['cacheable.unversioned-key'] = '"cached_moved-unversioned"'
+  env['cacheable.key']   = '"etag_value"'
+  env['cacheable.unversioned-key'] = '"cached_moved_cache_key"'
   env['cacheable.store'] = 'server'
 
   [301, { 'Location' => 'http://shopify.com' }, []]
@@ -36,8 +36,8 @@ end
 def moved(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = true
-  env['cacheable.key']   = '"abcd"'
-  env['cacheable.unversioned-key'] = '"moved-unversioned"'
+  env['cacheable.key']   = '"etag_value"'
+  env['cacheable.unversioned-key'] = '"moved_cache_key"'
 
   [301, { 'Location' => 'http://shopify.com', 'Content-Type' => 'text/plain' }, []]
 end
@@ -45,18 +45,28 @@ end
 def cacheable_app(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = true
-  env['cacheable.key']   = '"abcd"'
-  env['cacheable.unversioned-key'] = '"cacheable_app-unversioned"'
+  env['cacheable.key']   = '"etag_value"'
+  env['cacheable.unversioned-key'] = '"cacheable_app_cache_key"'
 
   body = block_given? ? [yield] : ['Hi']
   [200, { 'Content-Type' => 'text/plain' }, body]
 end
 
+def cacheable_app_limit_headers(env)
+  env['cacheable.cache'] = true
+  env['cacheable.miss']  = true
+  env['cacheable.key']   = '"etag_value"'
+  env['cacheable.unversioned-key'] = '"cacheable_app_limit_headers_cache_key"'
+
+  body = block_given? ? [yield] : ['Hi']
+  [200, { 'Content-Type' => 'text/plain', 'Extra-Headers' => 'not-cached', 'Cache-Tags' => 'tag1, tag2'}, body]
+end
+
 def cacheable_app_with_unversioned(env)
   env['cacheable.cache']           = true
   env['cacheable.miss']            = true
-  env['cacheable.key']             = '"abcd"'
-  env['cacheable.unversioned-key'] = '"cacheable_app_with_unversioned-unversioned"'
+  env['cacheable.key']             = '"etag_value"'
+  env['cacheable.unversioned-key'] = '"cacheable_app_with_unversioned_cache_key"'
 
   body = block_given? ? [yield] : ['Hi']
   [200, { 'Content-Type' => 'text/plain' }, body]
@@ -65,8 +75,8 @@ end
 def already_cached_app(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = false
-  env['cacheable.key']   = '"abcd"'
-  env['cacheable.unversioned-key'] = '"already_cached_app-unversioned"'
+  env['cacheable.key']   = '"etag_value"'
+  env['cacheable.unversioned-key'] = '"already_cached_app_cache_key"'
   env['cacheable.store'] = 'server'
 
   body = block_given? ? [yield] : ['Hi']
@@ -76,8 +86,8 @@ end
 def client_hit_app(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = false
-  env['cacheable.key']   = '"abcd"'
-  env['cacheable.unversioned-key'] = '"client_hit_app-unversioned"'
+  env['cacheable.key']   = '"etag_value"'
+  env['cacheable.unversioned-key'] = '"client_hit_app_cache_key"'
   env['cacheable.store'] = 'client'
 
   body = block_given? ? [yield] : ['']
@@ -90,8 +100,9 @@ class MiddlewareTest < Minitest::Test
 
     ware = ResponseBank::Middleware.new(method(:app))
     result = ware.call(env)
+    headers = result[1]
 
-    assert_nil(result[1]['ETag'])
+    assert_nil(headers['ETag'])
   end
 
   def test_cache_miss_and_not_found
@@ -103,7 +114,8 @@ class MiddlewareTest < Minitest::Test
     ware = ResponseBank::Middleware.new(method(:not_found))
     result = ware.call(env)
 
-    assert_equal('"abcd"', result[1]['ETag'])
+    headers = result[1]
+    assert_equal('"etag_value"', headers['ETag'])
   end
 
   def test_cache_hit_and_moved
@@ -114,9 +126,10 @@ class MiddlewareTest < Minitest::Test
 
     ware = ResponseBank::Middleware.new(method(:cached_moved))
     result = ware.call(env)
+    headers = result[1]
 
-    assert_equal('"abcd"', result[1]['ETag'])
-    assert_equal('http://shopify.com', result[1]['Location'])
+    assert_equal('"etag_value"',headers['ETag'])
+    assert_equal('http://shopify.com', headers['Location'])
   end
 
   def test_cache_miss_and_moved
@@ -126,17 +139,45 @@ class MiddlewareTest < Minitest::Test
     env = Rack::MockRequest.env_for("http://example.com/index.html")
     ware = ResponseBank::Middleware.new(method(:moved))
     result = ware.call(env)
+    headers = result[1]
 
-    assert_equal('"abcd"', result[1]['ETag'])
-    assert_equal('http://shopify.com', result[1]['Location'])
+    assert_equal('"etag_value"', headers['ETag'])
+    assert_equal('http://shopify.com', headers['Location'])
+  end
+
+  def test_cache_miss_and_store_limited_headers
+    ResponseBank.stubs(:cache_store).returns(ActiveSupport::Cache.lookup_store(:memory_store))
+    ResponseBank::Middleware.any_instance.stubs(timestamp: 424242)
+    ResponseBank.cache_store.expects(:write).with(
+      '"cacheable_app_limit_headers_cache_key"',
+        MessagePack.dump([200, {'Content-Type' => 'text/plain', 'ETag' => '"etag_value"', 'Cache-Tags' => 'tag1, tag2'}, ResponseBank.compress('Hi'), 424242]),
+        raw: true,
+        expires_in: nil,
+    ).once
+
+    env = Rack::MockRequest.env_for("http://example.com/index.html")
+
+    ware = ResponseBank::Middleware.new(method(:cacheable_app_limit_headers))
+    result = ware.call(env)
+    headers = result[1]
+
+    assert(env['cacheable.cache'])
+    assert(env['cacheable.miss'])
+
+    assert_equal('"etag_value"', headers['ETag'])
+    assert_equal('miss', headers['X-Cache'])
+    assert_nil(env['cacheable.store'])
+
+    # no gzip support here
+    assert(!headers['Content-Encoding'])
   end
 
   def test_cache_miss_and_store
     ResponseBank.stubs(:cache_store).returns(ActiveSupport::Cache.lookup_store(:memory_store))
     ResponseBank::Middleware.any_instance.stubs(timestamp: 424242)
     ResponseBank.cache_store.expects(:write).with(
-      '"cacheable_app-unversioned"',
-        MessagePack.dump([200, {'Content-Type' => 'text/plain', 'ETag' => '"abcd"' }, ResponseBank.compress('Hi'), 424242]),
+      '"cacheable_app_cache_key"',
+        MessagePack.dump([200, {'Content-Type' => 'text/plain', 'ETag' => '"etag_value"' }, ResponseBank.compress('Hi'), 424242]),
         raw: true,
         expires_in: nil,
     ).once
@@ -145,16 +186,17 @@ class MiddlewareTest < Minitest::Test
 
     ware = ResponseBank::Middleware.new(method(:cacheable_app))
     result = ware.call(env)
+    headers = result[1]
 
     assert(env['cacheable.cache'])
     assert(env['cacheable.miss'])
 
-    assert_equal('"abcd"', result[1]['ETag'])
-    assert_equal('miss', result[1]['X-Cache'])
+    assert_equal('"etag_value"', headers['ETag'])
+    assert_equal('miss', headers['X-Cache'])
     assert_nil(env['cacheable.store'])
 
     # no gzip support here
-    assert(!result[1]['Content-Encoding'])
+    assert(!headers['Content-Encoding'])
   end
 
   def test_cache_miss_and_store_with_shortened_cache_expiry
@@ -162,13 +204,13 @@ class MiddlewareTest < Minitest::Test
     env = Rack::MockRequest.env_for("http://example.com/index.html")
     env['cacheable.versioned-cache-expiry'] = 30.seconds
 
-    ResponseBank.cache_store.expects(:write).with('"cacheable_app_with_unversioned-unversioned"', anything, has_entries(expires_in: 30.seconds))
+    ResponseBank.cache_store.expects(:write).with('"cacheable_app_with_unversioned_cache_key"', anything, has_entries(expires_in: 30.seconds))
 
     ware = ResponseBank::Middleware.new(method(:cacheable_app_with_unversioned))
     result = ware.call(env)
 
     headers = result[1]
-    assert_equal('"abcd"', headers['ETag'])
+    assert_equal('"etag_value"', headers['ETag'])
     assert_equal('miss', headers['X-Cache'])
   end
 
@@ -176,8 +218,8 @@ class MiddlewareTest < Minitest::Test
     ResponseBank.stubs(:cache_store).returns(ActiveSupport::Cache.lookup_store(:memory_store))
     ResponseBank::Middleware.any_instance.stubs(timestamp: 424242)
     ResponseBank.cache_store.expects(:write).with(
-      '"moved-unversioned"',
-        MessagePack.dump([301, {'Location' => 'http://shopify.com', 'Content-Type' => 'text/plain', 'ETag' => '"abcd"'}, ResponseBank.compress(''), 424242]),
+      '"moved_cache_key"',
+        MessagePack.dump([301, {'Location' => 'http://shopify.com', 'Content-Type' => 'text/plain', 'ETag' => '"etag_value"'}, ResponseBank.compress(''), 424242]),
         raw: true,
         expires_in: nil,
     ).once
@@ -186,24 +228,25 @@ class MiddlewareTest < Minitest::Test
 
     ware = ResponseBank::Middleware.new(method(:moved))
     result = ware.call(env)
+    headers = result[1]
 
     assert(env['cacheable.cache'])
     assert(env['cacheable.miss'])
 
-    assert_equal('"abcd"', result[1]['ETag'])
-    assert_equal('miss', result[1]['X-Cache'])
+    assert_equal('"etag_value"', headers['ETag'])
+    assert_equal('miss', headers['X-Cache'])
     assert_nil(env['cacheable.store'])
 
     # no gzip support here
-    assert(!result[1]['Content-Encoding'])
+    assert(!headers['Content-Encoding'])
   end
 
   def test_cache_miss_and_store_with_gzip_support
     ResponseBank.stubs(:cache_store).returns(ActiveSupport::Cache.lookup_store(:memory_store))
     ResponseBank::Middleware.any_instance.stubs(timestamp: 424242)
     ResponseBank.cache_store.expects(:write).with(
-      '"cacheable_app-unversioned"',
-        MessagePack.dump([200, {'Content-Type' => 'text/plain', 'ETag' => '"abcd"' }, ResponseBank.compress('Hi'), 424242]),
+      '"cacheable_app_cache_key"',
+        MessagePack.dump([200, {'Content-Type' => 'text/plain', 'ETag' => '"etag_value"' }, ResponseBank.compress('Hi'), 424242]),
         raw: true,
         expires_in: nil,
     ).once
@@ -213,16 +256,17 @@ class MiddlewareTest < Minitest::Test
 
     ware = ResponseBank::Middleware.new(method(:cacheable_app))
     result = ware.call(env)
+    headers = result[1]
 
     assert(env['cacheable.cache'])
     assert(env['cacheable.miss'])
 
-    assert_equal('"abcd"', result[1]['ETag'])
-    assert_equal('miss', result[1]['X-Cache'])
+    assert_equal('"etag_value"', headers['ETag'])
+    assert_equal('miss', headers['X-Cache'])
     assert_nil(env['cacheable.store'])
 
     # gzip support!
-    assert_equal('gzip', result[1]['Content-Encoding'])
+    assert_equal('gzip', headers['Content-Encoding'])
     assert_equal([ResponseBank.compress("Hi")], result[2])
   end
 
@@ -234,11 +278,12 @@ class MiddlewareTest < Minitest::Test
 
     ware = ResponseBank::Middleware.new(method(:already_cached_app))
     result = ware.call(env)
+    headers = result[1]
 
     assert(env['cacheable.cache'])
     assert(!env['cacheable.miss'])
     assert_equal('server', env['cacheable.store'])
-    assert_equal('"abcd"', result[1]['ETag'])
+    assert_equal('"etag_value"', headers['ETag'])
   end
 
   def test_cache_hit_client
@@ -249,11 +294,12 @@ class MiddlewareTest < Minitest::Test
 
     ware = ResponseBank::Middleware.new(method(:client_hit_app))
     result = ware.call(env)
+    headers = result[1]
 
     assert(env['cacheable.cache'])
     assert(!env['cacheable.miss'])
     assert_equal('client', env['cacheable.store'])
-    assert_equal('"abcd"', result[1]['ETag'])
+    assert_equal('"etag_value"', headers['ETag'])
   end
 
   def test_ie_ajax
@@ -290,11 +336,12 @@ class MiddlewareTest < Minitest::Test
 
     ware = ResponseBank::Middleware.new(method(:already_cached_app))
     result = ware.call(env)
+    headers = result[1]
 
     assert(env['cacheable.cache'])
     assert(!env['cacheable.miss'])
     assert_equal('server', env['cacheable.store'])
-    assert_equal('"abcd"', result[1]['ETag'])
-    assert_equal("-1", result[1]['Expires'])
+    assert_equal('"etag_value"', headers['ETag'])
+    assert_equal("-1", headers['Expires'])
   end
 end

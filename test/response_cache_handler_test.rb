@@ -29,7 +29,7 @@ class ResponseCacheHandlerTest < Minitest::Test
   end
 
   def page(cache_hit = true)
-    etag = cache_hit ? handler.versioned_key_hash : "not-cached"
+    etag = cache_hit ? handler.entity_tag_hash : "not-cached"
     [200, {"Content-Type" => "text/html", "ETag" => etag}, ResponseBank.compress("<body>hi.</body>"), 1331765506]
   end
 
@@ -38,7 +38,7 @@ class ResponseCacheHandlerTest < Minitest::Test
   end
 
   def page_uncompressed(cache_hit = true)
-    etag = cache_hit ? handler.versioned_key_hash : "not-cached"
+    etag = cache_hit ? handler.entity_tag_hash : "not-cached"
     [200, {"Content-Type" => "text/html", "ETag" => etag}, "<body>hi.</body>", 1331765506]
   end
 
@@ -71,26 +71,32 @@ class ResponseCacheHandlerTest < Minitest::Test
   end
 
   def test_client_cache_hit
-    controller.request.env['HTTP_IF_NONE_MATCH'] = handler.versioned_key_hash
+    controller.request.env['HTTP_IF_NONE_MATCH'] = handler.entity_tag_hash
     handler.run!
     assert_env(false, 'client')
   end
 
   def test_client_cache_hit_quoted
-    controller.request.env['HTTP_IF_NONE_MATCH'] = "\"#{handler.versioned_key_hash}\""
+    controller.request.env['HTTP_IF_NONE_MATCH'] = "\"#{handler.entity_tag_hash}\""
     handler.run!
     assert_env(false, 'client')
   end
 
   def test_client_cache_hit_weak
-    controller.request.env['HTTP_IF_NONE_MATCH'] = "W/\"#{handler.versioned_key_hash}\""
+    controller.request.env['HTTP_IF_NONE_MATCH'] = "W/\"#{handler.entity_tag_hash}\""
+    handler.run!
+    assert_env(false, 'client')
+  end
+
+  def test_client_cache_hit_wildcard
+    controller.request.env['HTTP_IF_NONE_MATCH'] = "*"
     handler.run!
     assert_env(false, 'client')
   end
 
   def test_server_cache_hit
     controller.request.env['gzip'] = false
-    @cache_store.expects(:read).with(handler.unversioned_key_hash, raw: true).returns(page_serialized)
+    @cache_store.expects(:read).with(handler.cache_key_hash, raw: true).returns(page_serialized)
     expect_page_rendered(page_uncompressed)
     handler.run!
     assert_env(false, 'server')
@@ -98,7 +104,7 @@ class ResponseCacheHandlerTest < Minitest::Test
 
   def test_server_cache_hit_support_gzip
     controller.request.env['gzip'] = true
-    @cache_store.expects(:read).with(handler.unversioned_key_hash, raw: true).returns(page_serialized)
+    @cache_store.expects(:read).with(handler.cache_key_hash, raw: true).returns(page_serialized)
     expect_compressed_page_rendered(page)
     handler.run!
     assert_env(false, 'server')
@@ -106,9 +112,9 @@ class ResponseCacheHandlerTest < Minitest::Test
 
   def test_server_recent_cache_hit
     @controller.stubs(:cache_age_tolerance_in_seconds).returns(999999999999)
-    @cache_store.expects(:read).with(handler.unversioned_key_hash, raw: true).returns(page_serialized(false))
+    @cache_store.expects(:read).with(handler.cache_key_hash, raw: true).returns(page_serialized(false))
     expect_page_rendered(page_uncompressed(false))
-    ResponseBank.expects(:acquire_lock).with(handler.versioned_key_hash)
+    ResponseBank.expects(:acquire_lock).with(handler.entity_tag_hash)
     handler.run!
     assert_env(false, 'server')
   end
@@ -124,7 +130,7 @@ class ResponseCacheHandlerTest < Minitest::Test
     ResponseBank.stubs(:acquire_lock).returns(false)
     @controller.stubs(:cache_age_tolerance_in_seconds).returns(999999999999)
     cache_page = page(false)
-    @cache_store.expects(:read).with(handler.unversioned_key_hash, raw: true).returns(MessagePack.dump(cache_page[0..2]))
+    @cache_store.expects(:read).with(handler.cache_key_hash, raw: true).returns(MessagePack.dump(cache_page[0..2]))
     handler.run!
     assert_env(true, :anything)
   end
@@ -132,7 +138,7 @@ class ResponseCacheHandlerTest < Minitest::Test
   def test_recent_cache_available_but_not_acceptable
     ResponseBank.stubs(:acquire_lock).returns(false)
     @controller.stubs(:cache_age_tolerance_in_seconds).returns(15)
-    @cache_store.expects(:read).with(handler.unversioned_key_hash, raw: true).returns(page_serialized(false))
+    @cache_store.expects(:read).with(handler.cache_key_hash, raw: true).returns(page_serialized(false))
     _, _, body = handler.run!
     assert_equal('some text', body)
     assert_env(true, :anything)
@@ -140,8 +146,8 @@ class ResponseCacheHandlerTest < Minitest::Test
 
   def test_force_refill_cache
     @controller.stubs(force_refill_cache?: true)
-    controller.request.env['HTTP_IF_NONE_MATCH'] = handler.versioned_key_hash
-    @cache_store.stubs(:read).with(handler.unversioned_key_hash, raw: true).returns(page_serialized)
+    controller.request.env['HTTP_IF_NONE_MATCH'] = handler.entity_tag_hash
+    @cache_store.stubs(:read).with(handler.cache_key_hash, raw: true).returns(page_serialized)
 
     _, _, body = handler.run!
     assert_env(true, nil)
@@ -152,7 +158,7 @@ class ResponseCacheHandlerTest < Minitest::Test
     controller.request.env['gzip'] = false
     assert(@controller.respond_to?(:serve_unversioned_cacheable_entry?, true))
     @controller.expects(:serve_unversioned_cacheable_entry?).returns(true).times(1)
-    @cache_store.expects(:read).with(handler.unversioned_key_hash, raw: true).returns(page_serialized)
+    @cache_store.expects(:read).with(handler.cache_key_hash, raw: true).returns(page_serialized)
     expect_page_rendered(page_uncompressed)
     handler.run!
     assert_env(false, 'server')
@@ -169,10 +175,10 @@ class ResponseCacheHandlerTest < Minitest::Test
   end
 
   def assert_env(miss, store)
-    vkh  = handler.versioned_key_hash
-    uvkh = handler.unversioned_key_hash
-    assert_equal(true,  controller.request.env['cacheable.cache'])
-    assert_equal(miss,  controller.request.env['cacheable.miss'])
+    etag  = handler.entity_tag_hash
+    unversioned_cache_key = handler.cache_key_hash
+    assert_equal(true, controller.request.env['cacheable.cache'])
+    assert_equal(miss, controller.request.env['cacheable.miss'])
 
     if store.nil?
       assert_nil(controller.request.env['cacheable.store'])
@@ -180,8 +186,8 @@ class ResponseCacheHandlerTest < Minitest::Test
       assert_equal(store, controller.request.env['cacheable.store'])
     end
 
-    assert_equal(vkh,   controller.request.env['cacheable.key'])
-    assert_equal(uvkh,  controller.request.env['cacheable.unversioned-key'])
+    assert_equal(etag, controller.request.env['cacheable.key'])
+    assert_equal(unversioned_cache_key, controller.request.env['cacheable.unversioned-key'])
   end
 
   def expect_page_rendered(page)
