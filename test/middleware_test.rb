@@ -8,8 +8,6 @@ module EmptyLogger
 end
 Rails.singleton_class.prepend(EmptyLogger)
 
-ResponseBank.cache_store = ActiveSupport::Cache.lookup_store(:memory_store)
-
 def app(_env)
   body = block_given? ? [yield] : ['Hi']
   [200, { 'Content-Type' => 'text/plain' }, body]
@@ -19,6 +17,7 @@ def not_found(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = true
   env['cacheable.key']   = '"abcd"'
+  env['cacheable.unversioned-key'] = '"not_found-unversioned"'
 
   body = block_given? ? [yield] : ['Hi']
   [404, { 'Content-Type' => 'text/plain' }, body]
@@ -28,6 +27,7 @@ def cached_moved(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = false
   env['cacheable.key']   = '"abcd"'
+  env['cacheable.unversioned-key'] = '"cached_moved-unversioned"'
   env['cacheable.store'] = 'server'
 
   [301, { 'Location' => 'http://shopify.com' }, []]
@@ -37,6 +37,7 @@ def moved(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = true
   env['cacheable.key']   = '"abcd"'
+  env['cacheable.unversioned-key'] = '"moved-unversioned"'
 
   [301, { 'Location' => 'http://shopify.com', 'Content-Type' => 'text/plain' }, []]
 end
@@ -45,6 +46,7 @@ def cacheable_app(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = true
   env['cacheable.key']   = '"abcd"'
+  env['cacheable.unversioned-key'] = '"cacheable_app-unversioned"'
 
   body = block_given? ? [yield] : ['Hi']
   [200, { 'Content-Type' => 'text/plain' }, body]
@@ -54,7 +56,7 @@ def cacheable_app_with_unversioned(env)
   env['cacheable.cache']           = true
   env['cacheable.miss']            = true
   env['cacheable.key']             = '"abcd"'
-  env['cacheable.unversioned-key'] = '"abcd-unversioned"'
+  env['cacheable.unversioned-key'] = '"cacheable_app_with_unversioned-unversioned"'
 
   body = block_given? ? [yield] : ['Hi']
   [200, { 'Content-Type' => 'text/plain' }, body]
@@ -64,6 +66,7 @@ def already_cached_app(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = false
   env['cacheable.key']   = '"abcd"'
+  env['cacheable.unversioned-key'] = '"already_cached_app-unversioned"'
   env['cacheable.store'] = 'server'
 
   body = block_given? ? [yield] : ['Hi']
@@ -74,6 +77,7 @@ def client_hit_app(env)
   env['cacheable.cache'] = true
   env['cacheable.miss']  = false
   env['cacheable.key']   = '"abcd"'
+  env['cacheable.unversioned-key'] = '"client_hit_app-unversioned"'
   env['cacheable.store'] = 'client'
 
   body = block_given? ? [yield] : ['']
@@ -91,6 +95,7 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_miss_and_not_found
+    ResponseBank.stubs(:cache_store).returns(ActiveSupport::Cache.lookup_store(:memory_store))
     ResponseBank.cache_store.expects(:write).once
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
@@ -102,6 +107,7 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_hit_and_moved
+    ResponseBank.stubs(:cache_store).returns(ActiveSupport::Cache.lookup_store(:memory_store))
     ResponseBank.cache_store.expects(:write).never
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
@@ -114,6 +120,7 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_miss_and_moved
+    ResponseBank.stubs(:cache_store).returns(ActiveSupport::Cache.lookup_store(:memory_store))
     ResponseBank.cache_store.expects(:write).once
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
@@ -125,10 +132,11 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_miss_and_store
+    ResponseBank.stubs(:cache_store).returns(ActiveSupport::Cache.lookup_store(:memory_store))
     ResponseBank::Middleware.any_instance.stubs(timestamp: 424242)
     ResponseBank.cache_store.expects(:write).with(
-      '"abcd"',
-        MessagePack.dump([200, 'text/plain', ResponseBank.compress('Hi'), 424242]),
+      '"cacheable_app-unversioned"',
+        MessagePack.dump([200, {'Content-Type' => 'text/plain', 'ETag' => '"abcd"' }, ResponseBank.compress('Hi'), 424242]),
         raw: true,
         expires_in: nil,
     ).once
@@ -150,21 +158,26 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_miss_and_store_with_shortened_cache_expiry
+    ResponseBank.stubs(:cache_store).returns(ActiveSupport::Cache.lookup_store(:memory_store))
     env = Rack::MockRequest.env_for("http://example.com/index.html")
     env['cacheable.versioned-cache-expiry'] = 30.seconds
 
-    ResponseBank.cache_store.expects(:write).with('"abcd"', anything, has_entries(expires_in: 30.seconds))
-    ResponseBank.cache_store.expects(:write).with('"abcd-unversioned"', anything, has_entries(expires_in: nil))
+    ResponseBank.cache_store.expects(:write).with('"cacheable_app_with_unversioned-unversioned"', anything, has_entries(expires_in: 30.seconds))
 
     ware = ResponseBank::Middleware.new(method(:cacheable_app_with_unversioned))
     result = ware.call(env)
+
+    headers = result[1]
+    assert_equal('"abcd"', headers['ETag'])
+    assert_equal('miss', headers['X-Cache'])
   end
 
   def test_cache_miss_and_store_on_moved
+    ResponseBank.stubs(:cache_store).returns(ActiveSupport::Cache.lookup_store(:memory_store))
     ResponseBank::Middleware.any_instance.stubs(timestamp: 424242)
     ResponseBank.cache_store.expects(:write).with(
-      '"abcd"',
-        MessagePack.dump([301, 'text/plain', ResponseBank.compress(''), 424242, 'http://shopify.com']),
+      '"moved-unversioned"',
+        MessagePack.dump([301, {'Location' => 'http://shopify.com', 'Content-Type' => 'text/plain', 'ETag' => '"abcd"'}, ResponseBank.compress(''), 424242]),
         raw: true,
         expires_in: nil,
     ).once
@@ -186,10 +199,11 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_miss_and_store_with_gzip_support
+    ResponseBank.stubs(:cache_store).returns(ActiveSupport::Cache.lookup_store(:memory_store))
     ResponseBank::Middleware.any_instance.stubs(timestamp: 424242)
     ResponseBank.cache_store.expects(:write).with(
-      '"abcd"',
-        MessagePack.dump([200, 'text/plain', ResponseBank.compress('Hi'), 424242]),
+      '"cacheable_app-unversioned"',
+        MessagePack.dump([200, {'Content-Type' => 'text/plain', 'ETag' => '"abcd"' }, ResponseBank.compress('Hi'), 424242]),
         raw: true,
         expires_in: nil,
     ).once
@@ -213,6 +227,7 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_hit_server
+    ResponseBank.stubs(:cache_store).returns(ActiveSupport::Cache.lookup_store(:memory_store))
     ResponseBank.cache_store.expects(:write).times(0)
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
@@ -227,6 +242,7 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_hit_client
+    ResponseBank.stubs(:cache_store).returns(ActiveSupport::Cache.lookup_store(:memory_store))
     ResponseBank.cache_store.expects(:write).times(0)
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")
@@ -265,6 +281,7 @@ class MiddlewareTest < Minitest::Test
   end
 
   def test_cache_hit_server_with_ie_ajax
+    ResponseBank.stubs(:cache_store).returns(ActiveSupport::Cache.lookup_store(:memory_store))
     ResponseBank.cache_store.expects(:write).times(0)
 
     env = Rack::MockRequest.env_for("http://example.com/index.html")

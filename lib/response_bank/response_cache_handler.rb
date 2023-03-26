@@ -79,29 +79,12 @@ module ResponseBank
     def try_to_serve_from_cache
       # Etag
       response = serve_from_browser_cache(versioned_key_hash)
-
       return response if response
 
-      # Memcached
-      response = if @serve_unversioned
-        serve_from_cache(unversioned_key_hash, "Cache hit: server (unversioned)")
-      else
-        serve_from_cache(versioned_key_hash, "Cache hit: server")
-      end
-
+      response = serve_from_cache(unversioned_key_hash, versioned_key_hash, @cache_age_tolerance)
       return response if response
 
-      @env['cacheable.locked'] ||= false
-
-      if @env['cacheable.locked'] || ResponseBank.acquire_lock(versioned_key_hash)
-        # execute if we can get the lock
-        @env['cacheable.locked'] = true
-      elsif serving_from_noncurrent_but_recent_version_acceptable?
-        # serve a stale version
-        response = serve_from_cache(unversioned_key_hash, "Cache hit: server (recent)", @cache_age_tolerance)
-
-        return response if response
-      end
+      ResponseBank.acquire_lock(versioned_key_hash) unless @env['cacheable.locked']
 
       # No cache hit; this request cannot be handled from cache.
       # Yield to the controller and mark for writing into cache.
@@ -131,7 +114,7 @@ module ResponseBank
       end
     end
 
-    def serve_from_cache(cache_key_hash, message, cache_age_tolerance = nil)
+    def serve_from_cache(cache_key_hash, match_entity_tag = "*", cache_age_tolerance = nil)
       raw = ResponseBank.read_from_backing_cache_store(@env, cache_key_hash, backing_cache_store: @cache_store)
 
       if raw
@@ -140,34 +123,56 @@ module ResponseBank
         @env['cacheable.miss']  = false
         @env['cacheable.store'] = 'server'
 
-        status, content_type, body, timestamp, location = hit
+        status, headers, body, timestamp, location = hit
 
-        if cache_age_tolerance && page_too_old?(timestamp, cache_age_tolerance)
-          ResponseBank.log("Found an unversioned cache entry, but it was too old (#{timestamp})")
+        # polyfill headers for legacy versions
+        headers = { 'Content-Type' => headers.to_s } if headers.is_a? String
+        headers['Location'] = location if location
 
-          nil
+        @env['cacheable.locked'] ||= false
+        if match_entity_tag == "*"
+          ResponseBank.log("Cache hit: server (unversioned)")
+          # page tolerance only applies for versioned + etag mismatch
+        elsif headers['ETag'] == match_entity_tag
+          ResponseBank.log("Cache hit: server")
         else
-          @headers['Content-Type'] = content_type
-
-          @headers['Location'] = location if location
-
-          if @env["gzip"]
-            @headers['Content-Encoding'] = "gzip"
+          # cache miss
+          if ResponseBank.acquire_lock(match_entity_tag)
+            # execute if we can get the lock
+            @env['cacheable.locked'] = true
+            return nil
+          elsif stale_while_revalidate?(timestamp, cache_age_tolerance)
+            ResponseBank.log("Cache hit: server (recent)")
           else
-            # we have to uncompress because the client doesn't support gzip
-            ResponseBank.log("uncompressing for client without gzip")
-            body = ResponseBank.decompress(body)
+            ResponseBank.log("Found an unversioned cache entry, but it was too old (#{timestamp})")
+            return nil
           end
-
-          ResponseBank.log(message)
-
-          [status, @headers, [body]]
         end
+
+
+        # version check
+        # unversioned but tolerance threshold
+        # regen
+        @headers['Content-Type'] = headers['Content-Type']
+        @headers['Location'] = headers['Location'] if headers['Location']
+
+        if @env["gzip"]
+          @headers['Content-Encoding'] = "gzip"
+        else
+          # we have to uncompress because the client doesn't support gzip
+          ResponseBank.log("uncompressing for client without gzip")
+          body = ResponseBank.decompress(body)
+        end
+
+        [status, @headers, [body]]
       end
     end
 
-    def page_too_old?(timestamp, cache_age_tolerance)
-      !timestamp || timestamp < (Time.now.to_i - cache_age_tolerance)
+    def stale_while_revalidate?(timestamp, cache_age_tolerance)
+      return false if !cache_age_tolerance
+      return false if !timestamp
+
+      timestamp >= (Time.now.to_i - cache_age_tolerance)
     end
 
     def refill_cache

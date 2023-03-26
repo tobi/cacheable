@@ -20,7 +20,6 @@ module ResponseBank
       if env['cacheable.cache']
         if [200, 404, 301, 304].include?(status)
           headers['ETag'] = env['cacheable.key']
-          headers['X-Alternate-Cache-Key'] = env['cacheable.unversioned-key']
 
           if ie_ajax_request?(env)
             headers["Expires"] = "-1"
@@ -39,21 +38,16 @@ module ResponseBank
           body_gz = ResponseBank.compress(body_string)
 
           # Store result
-          cache_data = [status, headers['Content-Type'], body_gz, timestamp]
-          cache_data << headers['Location'] if status == 301
+          cache_data = [status, headers, body_gz, timestamp]
 
           ResponseBank.write_to_cache(env['cacheable.key']) do
             payload = MessagePack.dump(cache_data)
             ResponseBank.write_to_backing_cache_store(
               env,
-              env['cacheable.key'],
+              env['cacheable.unversioned-key'],
               payload,
               expires_in: env['cacheable.versioned-cache-expiry'],
             )
-
-            if env['cacheable.unversioned-key']
-              ResponseBank.write_to_backing_cache_store(env, env['cacheable.unversioned-key'], payload)
-            end
           end
 
           # since we had to generate the gz version above already we may

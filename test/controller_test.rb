@@ -57,6 +57,7 @@ class ResponseBankControllerTest < Minitest::Test
   def test_server_cache_hit
     controller.request.env['gzip'] = false
     @cache_store.expects(:read).returns(page_serialized)
+    ResponseBank::ResponseCacheHandler.any_instance.expects(:versioned_key_hash).returns('*').at_least_once
     controller.expects(:render).with(plain: '<body>hi.</body>', status: 200)
 
     controller.send(:response_cache) {}
@@ -77,6 +78,6 @@ class ResponseBankControllerTest < Minitest::Test
   end
 
   def page_serialized
-    MessagePack.dump([200, "text/html", ResponseBank.compress("<body>hi.</body>"), 1331765506])
+    MessagePack.dump([200, {"Content-Type" => "text/html"}, ResponseBank.compress("<body>hi.</body>"), 1331765506])
   end
 end
