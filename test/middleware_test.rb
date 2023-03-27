@@ -8,8 +8,6 @@ module EmptyLogger
 end
 Rails.singleton_class.prepend(EmptyLogger)
 
-ResponseBank.cache_store = ActiveSupport::Cache.lookup_store(:memory_store)
-
 def app(_env)
   body = block_given? ? [yield] : ['Hi']
   [200, { 'Content-Type' => 'text/plain' }, body]
@@ -81,6 +79,15 @@ def client_hit_app(env)
 end
 
 class MiddlewareTest < Minitest::Test
+  def setup
+    @original_cache_store = ResponseBank.cache_store
+    ResponseBank.cache_store = ActiveSupport::Cache.lookup_store(:memory_store)
+  end
+
+  def teardown
+    ResponseBank.cache_store = @original_cache_store
+  end
+
   def test_cache_miss_and_ignore
     env = Rack::MockRequest.env_for("http://example.com/index.html")
 
